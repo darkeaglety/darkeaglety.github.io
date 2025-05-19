@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-5XX5GZ4QKM"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-5XX5GZ4QKM');
+</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axolotl Clicker</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
+        #game-container { display: flex; }
+        canvas { display: block; background-color: #add8e6; }
+        #sidebar {
+            width: 250px; /* Adjust width as needed */
+            height: 600px; /* Match canvas height */
+            background-color: #e0e0e0; /* Light grey for sidebar */
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: auto; /* In case of many upgrades */
+        }
+        #sidebar h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+        .upgrade-button {
+            background-color: #4CAF50; /* Green */
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 8px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            width: 90%; /* Make buttons take most of sidebar width */
+        }
+        .upgrade-button:hover {
+            background-color: #45a049;
+        }
+        .upgrade-button:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+        #shop-sidebar {
+            width: 250px;
+            height: 600px;
+            background-color: #e0e0e0;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: auto;
+        }
+        #shop-sidebar h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+        .shop-item-button {
+            background-color: #2196F3;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 8px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            width: 90%;
+        }
+        .shop-item-button:hover {
+            background-color: #1976D2;
+        }
+        .shop-item-button:disabled {
+            background-color: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+        .shop-item-button.equipped {
+            background-color: #FFD700;
+            color: #000000;
+            font-weight: bold;
+        }
+        .shop-item-button.equipped:hover {
+            background-color: #FFC107;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="sidebar">
+            <h3>Upgrades</h3>
+            <!-- Upgrade buttons will be added here by game.js -->
+        </div>
+        <div> <!-- This div will wrap the canvas -->
+            <!-- The canvas will be created by Kaboom.js -->
+        </div>
+        <div id="shop-sidebar">
+            <h3>Hat Shop</h3>
+            <!-- Shop items will be added here by game.js -->
+        </div>
+    </div>
+    <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
+    <script src="game.js"></script>
+</body>
+</html> 
