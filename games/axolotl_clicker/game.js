@@ -1,17 +1,12 @@
 // Initialize Kaboom
 kaboom({
     global: true,
-    width: 600,
+    width: 800,
     height: 600,
     scale: 1,
     debug: true,
     background: [173, 216, 230], // Light blue background
-    canvas: document.querySelector("#kaboom-canvas"), // Use the canvas element
-    touchToMouse: true, // Enable touch to mouse conversion
-    pixelDensity: 1, // Ensure consistent pixel density
-    crisp: true, // Enable crisp pixel rendering
-    stretch: false, // Don't stretch the canvas
-    letterbox: true, // Enable letterboxing to maintain aspect ratio
+    // canvas: document.querySelector("canvas"), // Removed so Kaboom creates its own canvas
 });
 
 // Load assets
@@ -377,7 +372,7 @@ scene("main", () => {
         updateHatSprite(); // Keep hat in correct position
     });
 
-    // Update click handling to work with both mouse and touch
+    // Update createShopButtons after points change
     onClick("axolotl", () => {
         points += pointsPerClick;
         axolotl.scale = vec2(5.5);
@@ -385,34 +380,6 @@ scene("main", () => {
             axolotl.scale = vec2(5);
         });
         createShopButtons(); // Update shop after clicking
-    });
-
-    // Add touch handling as a backup
-    onTouchStart((id, pos) => {
-        // Get the canvas element and its bounding rect
-        const canvas = document.querySelector("#kaboom-canvas");
-        const rect = canvas.getBoundingClientRect();
-        
-        // Calculate the scale factor between the canvas display size and its internal size
-        const scaleX = 600 / rect.width;
-        const scaleY = 600 / rect.height;
-        
-        // Convert touch position to game coordinates, accounting for canvas scaling and position
-        const gamePos = vec2(
-            (pos.x - rect.left) * scaleX,
-            (pos.y - rect.top) * scaleY
-        );
-        
-        // Check if the touch point collides with the axolotl
-        const touched = axolotl.isColliding(axolotl.area, gamePos);
-        if (touched) {
-            points += pointsPerClick;
-            axolotl.scale = vec2(5.5);
-            wait(0.1, () => {
-                axolotl.scale = vec2(5);
-            });
-            createShopButtons(); // Update shop after clicking
-        }
     });
 
     // Add auto clicker loop
