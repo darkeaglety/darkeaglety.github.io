@@ -12,65 +12,190 @@
 </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Axolotl Clicker</title>
+    <title>Axolotl Clicker - TyGames</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
-        #game-container { display: flex; }
-        canvas { display: block; background-color: #add8e6; }
-        #sidebar {
-            width: 250px; /* Adjust width as needed */
-            height: 600px; /* Match canvas height */
-            background-color: #e0e0e0; /* Light grey for sidebar */
-            padding: 15px;
+        :root {
+            --primary-color: #FF6B6B;
+            --secondary-color: #4ECDC4;
+            --accent-color: #FFE66D;
+            --background-color: #1A1A2E;
+            --card-background: #16213E;
+            --text-color: #FFFFFF;
+            --geometric-size: 150px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body { 
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
+        }
+
+        /* Geometric Background Elements */
+        .geometric-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .geometric-shape {
+            position: absolute;
+            opacity: 0.1;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .shape-1 {
+            width: var(--geometric-size);
+            height: var(--geometric-size);
+            background: var(--primary-color);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            top: 10%;
+            left: 5%;
+            animation-delay: 0s;
+        }
+
+        .shape-2 {
+            width: calc(var(--geometric-size) * 0.8);
+            height: calc(var(--geometric-size) * 0.8);
+            background: var(--secondary-color);
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            top: 60%;
+            right: 10%;
+            animation-delay: -5s;
+        }
+
+        .shape-3 {
+            width: calc(var(--geometric-size) * 1.2);
+            height: calc(var(--geometric-size) * 1.2);
+            background: var(--accent-color);
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            bottom: 5%;
+            left: 20%;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        /* Navigation */
+        nav {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            overflow-y: auto; /* In case of many upgrades */
+            padding: 0 2rem;
         }
-        #sidebar h3 {
-            margin-top: 0;
-            text-align: center;
-        }
-        .upgrade-button {
-            background-color: #4CAF50; /* Green */
-            border: none;
-            color: white;
-            padding: 10px 15px;
-            text-align: center;
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--text-color);
             text-decoration: none;
-            display: inline-block;
-            font-size: 14px;
-            margin: 8px 2px;
-            cursor: pointer;
-            border-radius: 8px;
-            width: 90%; /* Make buttons take most of sidebar width */
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .upgrade-button:hover {
-            background-color: #45a049;
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
         }
-        .upgrade-button:disabled {
-            background-color: #cccccc;
-            color: #666666;
-            cursor: not-allowed;
+
+        .nav-links a {
+            color: var(--text-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
         }
-        #shop-sidebar {
-            width: 250px;
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Game Container Styles */
+        #game-container { 
+            margin: 80px auto 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            max-width: 1200px;
+            padding: 0 1rem;
+            flex: 1;
+            position: relative;
+        }
+
+        #game-canvas-container {
+            position: relative;
+            width: 600px;
             height: 600px;
-            background-color: #e0e0e0;
-            padding: 15px;
+            background-color: #add8e6;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        #kaboom-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #sidebar, #shop-sidebar {
+            width: 220px;
+            height: 600px;
+            background-color: var(--card-background);
+            padding: 12px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             align-items: center;
             overflow-y: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            flex-shrink: 0;
         }
-        #shop-sidebar h3 {
+
+        #sidebar h3, #shop-sidebar h3 {
             margin-top: 0;
             text-align: center;
+            color: var(--text-color);
         }
-        .shop-item-button {
-            background-color: #2196F3;
+
+        .upgrade-button {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
             border: none;
             color: white;
             padding: 10px 15px;
@@ -82,40 +207,165 @@
             cursor: pointer;
             border-radius: 8px;
             width: 90%;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .shop-item-button:hover {
-            background-color: #1976D2;
+
+        .upgrade-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .shop-item-button:disabled {
-            background-color: #cccccc;
+
+        .upgrade-button:disabled {
+            background: #cccccc;
             color: #666666;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
+
+        .shop-item-button {
+            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 8px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            width: 90%;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .shop-item-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .shop-item-button:disabled {
+            background: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .shop-item-button.equipped {
-            background-color: #FFD700;
+            background: linear-gradient(45deg, var(--accent-color), #FFC107);
             color: #000000;
             font-weight: bold;
         }
-        .shop-item-button.equipped:hover {
-            background-color: #FFC107;
+
+        /* Footer */
+        footer {
+            background: var(--card-background);
+            padding: 2rem 0;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .social-links a {
+            color: var(--text-color);
+            font-size: 1.5rem;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .social-links a:hover {
+            color: var(--primary-color);
+            transform: translateY(-3px);
+        }
+
+        /* Update media queries for better mobile layout */
+        @media (max-width: 768px) {
+            #game-container {
+                margin-top: 120px;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            #game-canvas-container {
+                width: 100%;
+                height: 400px;
+            }
+
+            #sidebar, #shop-sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 250px;
+                margin: 0.5rem 0;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Geometric Background -->
+    <div class="geometric-bg">
+        <div class="geometric-shape shape-1"></div>
+        <div class="geometric-shape shape-2"></div>
+        <div class="geometric-shape shape-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <i class="fas fa-gamepad"></i>
+                TyGames
+            </a>
+            <div class="nav-links">
+                <a href="/#games">Games</a>
+                <a href="/#about">About</a>
+                <a href="/#contact">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Game Container -->
     <div id="game-container">
         <div id="sidebar">
             <h3>Upgrades</h3>
             <!-- Upgrade buttons will be added here by game.js -->
         </div>
-        <div> <!-- This div will wrap the canvas -->
-            <!-- The canvas will be created by Kaboom.js -->
+        <div id="game-canvas-container">
+            <canvas id="kaboom-canvas"></canvas>
         </div>
         <div id="shop-sidebar">
             <h3>Hat Shop</h3>
             <!-- Shop items will be added here by game.js -->
         </div>
     </div>
+
     <script src="https://unpkg.com/kaboom@3000.0.1/dist/kaboom.js"></script>
     <script src="game.js"></script>
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <h3>GameTyme</h3>
+            <p>Your Ultimate Gaming Destination</p>
+            <div class="social-links">
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-discord"></i></a>
+                <a href="#"><i class="fab fa-github"></i></a>
+            </div>
+            <p>&copy; 2024 GameTyme. All rights reserved.</p>
+        </div>
+    </footer>
+
+   
 </body>
 </html> 

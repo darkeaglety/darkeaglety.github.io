@@ -1,18 +1,19 @@
 // Initialize Kaboom
 kaboom({
     global: true,
-    width: 800,
+    width: 600,
     height: 600,
     scale: 1,
     debug: true,
     background: [173, 216, 230], // Light blue background
-    // canvas: document.querySelector("canvas"), // Removed so Kaboom creates its own canvas
+    canvas: document.querySelector("#kaboom-canvas"), // Use the canvas element
 });
 
 // Load assets
 loadSprite("axolotl", "assets/AzarethStill.png");
 loadSprite("party_hat", "assets/party_hat.png");
 loadSprite("crown", "assets/crown.png");
+loadSprite("wizard_hat", "assets/wizard_hat.png");
 
 // Game variables
 let points = 0;
@@ -119,7 +120,7 @@ const hats = [
         id: "wizard",
         name: "Wizard Hat",
         price: 1000,
-        emoji: "🧙‍♂️",
+        sprite: "wizard_hat",
         description: "Magical powers included.",
     },
 ];
@@ -212,14 +213,16 @@ scene("main", () => {
                 if (hatObj.sprite) {
                     let hatScale = 0.5; // Default scale for sprites
                     let hatYOffset = -200; // Default y-offset for sprites
-                    let hatXOffset = 0; // Default x-offset for other hats
+                    let hatXOffset = 0; // Default x-offset for sprites
 
                     if (hatObj.id === "crown") {
                         hatScale = 0.3; // Adjusted scale for crown
                         hatYOffset = -180; // Adjusted y-offset for crown
-                        hatXOffset = -40; // Move crown further left
-                    } else {
-                        hatXOffset = 0; // Default x-offset for other hats
+                        hatXOffset = -40; // Adjusted x-offset for crown
+                    } else if (hatObj.id === "wizard") {
+                         hatScale = 0.5; // Match scale of party hat
+                         hatYOffset = -200; // Match y-offset of party hat
+                         hatXOffset = -40; // Move wizard hat further left
                     }
                     // Add more conditions here for other sprite hats if needed
 
