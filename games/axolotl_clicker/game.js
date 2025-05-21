@@ -10,8 +10,8 @@ kaboom({
     touchToMouse: true, // Enable touch to mouse conversion
     pixelDensity: 1, // Ensure consistent pixel density
     crisp: true, // Enable crisp pixel rendering
-    stretch: true, // Stretch canvas to fit container
-    letterbox: false, // Disable letterboxing
+    stretch: false, // Don't stretch the canvas
+    letterbox: true, // Enable letterboxing to maintain aspect ratio
 });
 
 // Load assets
@@ -389,10 +389,18 @@ scene("main", () => {
 
     // Add touch handling as a backup
     onTouchStart((id, pos) => {
-        // Convert touch position to game coordinates
+        // Get the canvas element and its bounding rect
+        const canvas = document.querySelector("#kaboom-canvas");
+        const rect = canvas.getBoundingClientRect();
+        
+        // Calculate the scale factor between the canvas display size and its internal size
+        const scaleX = 600 / rect.width;
+        const scaleY = 600 / rect.height;
+        
+        // Convert touch position to game coordinates, accounting for canvas scaling and position
         const gamePos = vec2(
-            (pos.x / width()) * 600,
-            (pos.y / height()) * 600
+            (pos.x - rect.left) * scaleX,
+            (pos.y - rect.top) * scaleY
         );
         
         // Check if the touch point collides with the axolotl
