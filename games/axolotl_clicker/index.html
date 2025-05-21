@@ -22,7 +22,6 @@
             --background-color: #1A1A2E;
             --card-background: #16213E;
             --text-color: #FFFFFF;
-            --geometric-size: 150px;
         }
 
         * {
@@ -42,62 +41,9 @@
             flex-direction: column;
         }
 
-        /* Geometric Background Elements */
-        .geometric-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            overflow: hidden;
-        }
-
-        .geometric-shape {
-            position: absolute;
-            opacity: 0.1;
-            animation: float 20s infinite ease-in-out;
-        }
-
-        .shape-1 {
-            width: var(--geometric-size);
-            height: var(--geometric-size);
-            background: var(--primary-color);
-            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-            top: 10%;
-            left: 5%;
-            animation-delay: 0s;
-        }
-
-        .shape-2 {
-            width: calc(var(--geometric-size) * 0.8);
-            height: calc(var(--geometric-size) * 0.8);
-            background: var(--secondary-color);
-            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-            top: 60%;
-            right: 10%;
-            animation-delay: -5s;
-        }
-
-        .shape-3 {
-            width: calc(var(--geometric-size) * 1.2);
-            height: calc(var(--geometric-size) * 1.2);
-            background: var(--accent-color);
-            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-            bottom: 5%;
-            left: 20%;
-            animation-delay: -10s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
-        }
-
         /* Navigation */
         nav {
-            background: rgba(26, 26, 46, 0.95);
-            backdrop-filter: blur(10px);
+            background: var(--background-color);
             padding: 1rem 0;
             position: fixed;
             width: 100%;
@@ -146,12 +92,14 @@
             margin: 80px auto 2rem;
             display: flex;
             justify-content: center;
-            align-items: center;
-            gap: 1rem;
+            align-items: flex-start;
+            gap: 0.5rem;
             max-width: 1200px;
-            padding: 0 1rem;
+            padding: 0 0.5rem;
             flex: 1;
             position: relative;
+            min-height: calc(100vh - 200px);
+            will-change: transform; /* Optimize for animations */
         }
 
         #game-canvas-container {
@@ -162,6 +110,9 @@
             border-radius: 10px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
             overflow: hidden;
+            flex-shrink: 0;
+            will-change: transform;
+            touch-action: none; /* Prevent browser touch handling */
         }
 
         #kaboom-canvas {
@@ -171,13 +122,16 @@
             width: 100%;
             height: 100%;
             display: block;
+            transform: translateZ(0);
+            touch-action: none; /* Prevent browser touch handling */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
         }
 
         #sidebar, #shop-sidebar {
             width: 220px;
             height: 600px;
             background-color: var(--card-background);
-            padding: 12px;
+            padding: 8px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
@@ -198,16 +152,18 @@
             background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
             border: none;
             color: white;
-            padding: 10px 15px;
+            padding: 8px 10px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
             font-size: 14px;
-            margin: 8px 2px;
+            margin: 4px 0;
             cursor: pointer;
             border-radius: 8px;
-            width: 90%;
+            width: 100%;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            white-space: normal;
+            line-height: 1.2;
         }
 
         .upgrade-button:hover {
@@ -223,20 +179,28 @@
             box-shadow: none;
         }
 
+        .upgrade-button small {
+            font-size: 12px;
+            display: block;
+            margin-top: 2px;
+        }
+
         .shop-item-button {
             background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
             border: none;
             color: white;
-            padding: 10px 15px;
+            padding: 8px 10px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
             font-size: 14px;
-            margin: 8px 2px;
+            margin: 4px 0;
             cursor: pointer;
             border-radius: 8px;
-            width: 90%;
+            width: 100%;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            white-space: normal;
+            line-height: 1.2;
         }
 
         .shop-item-button:hover {
@@ -250,6 +214,12 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        .shop-item-button small {
+            font-size: 12px;
+            display: block;
+            margin-top: 2px;
         }
 
         .shop-item-button.equipped {
@@ -290,36 +260,162 @@
             transform: translateY(-3px);
         }
 
-        /* Update media queries for better mobile layout */
-        @media (max-width: 768px) {
+        /* Responsive Design */
+        @media (max-width: 1200px) {
             #game-container {
-                margin-top: 120px;
-                flex-direction: column;
                 gap: 0.5rem;
             }
 
             #game-canvas-container {
-                width: 100%;
+                width: 500px;
+                height: 500px;
+            }
+
+            #sidebar, #shop-sidebar {
+                width: 180px;
+                height: 500px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            #game-container {
+                gap: 0.25rem;
+            }
+
+            #game-canvas-container {
+                width: 450px;
+                height: 450px;
+            }
+
+            #sidebar, #shop-sidebar {
+                width: 160px;
+                height: 450px;
+                padding: 6px;
+            }
+
+            .upgrade-button, .shop-item-button {
+                padding: 6px 8px;
+                font-size: 13px;
+                margin: 3px 0;
+            }
+
+            .upgrade-button small, .shop-item-button small {
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #game-container {
+                margin-top: 120px;
+                gap: 0.25rem;
+                padding: 0 0.25rem;
+            }
+
+            #game-canvas-container {
+                width: 400px;
                 height: 400px;
             }
 
             #sidebar, #shop-sidebar {
-                width: 100%;
-                height: auto;
-                max-height: 250px;
-                margin: 0.5rem 0;
+                width: 140px;
+                height: 400px;
+                padding: 4px;
+            }
+
+            .upgrade-button, .shop-item-button {
+                padding: 5px 6px;
+                font-size: 12px;
+                margin: 2px 0;
+            }
+
+            .upgrade-button small, .shop-item-button small {
+                font-size: 10px;
+            }
+
+            #sidebar h3, #shop-sidebar h3 {
+                font-size: 1rem;
+                margin: 4px 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #game-container {
+                margin-top: 140px;
+                gap: 0.25rem;
+            }
+
+            #game-canvas-container {
+                width: 300px;
+                height: 300px;
+            }
+
+            #sidebar, #shop-sidebar {
+                width: 120px;
+                height: 300px;
+                padding: 4px;
+            }
+
+            .upgrade-button, .shop-item-button {
+                padding: 4px 5px;
+                font-size: 11px;
+                margin: 2px 0;
+            }
+
+            .upgrade-button small, .shop-item-button small {
+                font-size: 9px;
+            }
+
+            #sidebar h3, #shop-sidebar h3 {
+                font-size: 0.9rem;
+                margin: 3px 0;
+            }
+        }
+
+        /* Ensure footer stays at bottom */
+        footer {
+            margin-top: auto;
+            padding: 1.5rem 0;
+        }
+
+        .footer-content {
+            padding: 0 1rem;
+        }
+
+        @media (max-height: 800px) {
+            #game-container {
+                margin-top: 60px;
+            }
+
+            #game-canvas-container {
+                height: 350px;
+                width: 350px;
+            }
+
+            #sidebar, #shop-sidebar {
+                height: 350px;
+                width: 150px;
+            }
+        }
+
+        /* Add touch-specific styles */
+        @media (hover: none) and (pointer: coarse) {
+            #game-canvas-container {
+                touch-action: none;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            
+            #kaboom-canvas {
+                touch-action: none;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                user-select: none;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Geometric Background -->
-    <div class="geometric-bg">
-        <div class="geometric-shape shape-1"></div>
-        <div class="geometric-shape shape-2"></div>
-        <div class="geometric-shape shape-3"></div>
-    </div>
-
     <!-- Navigation -->
     <nav>
         <div class="nav-container">

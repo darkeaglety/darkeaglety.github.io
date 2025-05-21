@@ -7,6 +7,11 @@ kaboom({
     debug: true,
     background: [173, 216, 230], // Light blue background
     canvas: document.querySelector("#kaboom-canvas"), // Use the canvas element
+    touchToMouse: true, // Enable touch to mouse conversion
+    pixelDensity: 1, // Ensure consistent pixel density
+    crisp: true, // Enable crisp pixel rendering
+    stretch: true, // Stretch canvas to fit container
+    letterbox: false, // Disable letterboxing
 });
 
 // Load assets
@@ -372,7 +377,7 @@ scene("main", () => {
         updateHatSprite(); // Keep hat in correct position
     });
 
-    // Update createShopButtons after points change
+    // Update click handling to work with both mouse and touch
     onClick("axolotl", () => {
         points += pointsPerClick;
         axolotl.scale = vec2(5.5);
@@ -380,6 +385,26 @@ scene("main", () => {
             axolotl.scale = vec2(5);
         });
         createShopButtons(); // Update shop after clicking
+    });
+
+    // Add touch handling as a backup
+    onTouchStart((id, pos) => {
+        // Convert touch position to game coordinates
+        const gamePos = vec2(
+            (pos.x / width()) * 600,
+            (pos.y / height()) * 600
+        );
+        
+        // Check if the touch point collides with the axolotl
+        const touched = axolotl.isColliding(axolotl.area, gamePos);
+        if (touched) {
+            points += pointsPerClick;
+            axolotl.scale = vec2(5.5);
+            wait(0.1, () => {
+                axolotl.scale = vec2(5);
+            });
+            createShopButtons(); // Update shop after clicking
+        }
     });
 
     // Add auto clicker loop
