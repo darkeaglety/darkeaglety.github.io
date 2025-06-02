@@ -14,6 +14,8 @@ loadSprite("axolotl", "assets/AzarethStill.png");
 loadSprite("party_hat", "assets/party_hat.png");
 loadSprite("crown", "assets/crown.png");
 loadSprite("wizard_hat", "assets/wizard_hat.png");
+loadSprite("sunglasses", "assets/sunglasses.png");
+loadSprite("santa_hat", "assets/Gorro natalino-1.png.png");
 
 // Game variables
 let points = 0;
@@ -110,11 +112,11 @@ const hats = [
         description: "Fit for royalty!",
     },
     {
-        id: "cap",
-        name: "Cool Cap",
+        id: "santa",
+        name: "Santa Hat",
         price: 250,
-        emoji: "🧢",
-        description: "Stay cool!",
+        sprite: "santa_hat",
+        description: "Ho ho ho!",
     },
     {
         id: "wizard",
@@ -122,6 +124,13 @@ const hats = [
         price: 1000,
         sprite: "wizard_hat",
         description: "Magical powers included.",
+    },
+    {
+        id: "sunglasses",
+        name: "Cool Shades",
+        price: 300,
+        sprite: "sunglasses",
+        description: "Looking cool! 😎",
     },
 ];
 let ownedHats = { none: true };
@@ -220,15 +229,23 @@ scene("main", () => {
                         hatYOffset = -180; // Adjusted y-offset for crown
                         hatXOffset = -40; // Adjusted x-offset for crown
                     } else if (hatObj.id === "wizard") {
-                         hatScale = 0.5; // Match scale of party hat
-                         hatYOffset = -200; // Match y-offset of party hat
-                         hatXOffset = -40; // Move wizard hat further left
+                        hatScale = 0.5; // Match scale of party hat
+                        hatYOffset = -200; // Match y-offset of party hat
+                        hatXOffset = -40; // Move wizard hat further left
+                    } else if (hatObj.id === "sunglasses") {
+                        hatScale = 0.4; // Adjusted scale for sunglasses
+                        hatYOffset = -100; // Position sunglasses on the axolotl's face
+                        hatXOffset = 0; // Center the sunglasses
+                    } else if (hatObj.id === "santa") {
+                        hatScale = 0.4; // Adjusted scale for Santa Hat
+                        hatYOffset = -200; // Position Santa Hat on top of the head
+                        hatXOffset = 0; // Center the Santa Hat
                     }
                     // Add more conditions here for other sprite hats if needed
 
                     hatSprite = add([
                         sprite(hatObj.sprite),
-                        scale(hatScale), // Use the scale component correctly
+                        scale(hatScale),
                         pos(width() / 2 + hatXOffset, height() / 2 + hatYOffset),
                         anchor("center"),
                         z(101)
