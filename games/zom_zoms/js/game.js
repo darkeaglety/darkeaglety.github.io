@@ -617,7 +617,12 @@ function getLevelData(levelNum) {
 }
 
 function spawnBoss(scene) {
-    boss = scene.physics.add.sprite(400, 300, 'boss');
+    // Spawn boss far from the player's current position to avoid unfair overlap
+    const playerX = player.x;
+    const playerY = player.y;
+    const bossX = playerX < 400 ? 700 : 100;
+    const bossY = playerY < 300 ? 500 : 100;
+    boss = scene.physics.add.sprite(bossX, bossY, 'boss');
     boss.setCollideWorldBounds(true);
     boss.health = 200;
     bossMaxHealth = 200;
@@ -741,7 +746,9 @@ function nextLevel(scene) {
     zombies.clear(true, true);
     
     // Reset player position
-    player.setPosition(400, 300);
+    const spawnX = level === 10 ? 100 : 400;
+    const spawnY = level === 10 ? 300 : 300;
+    player.setPosition(spawnX, spawnY);
     
     // Reset level-specific counters
     zombiesKilledThisLevel = 0;
