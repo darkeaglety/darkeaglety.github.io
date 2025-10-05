@@ -359,25 +359,33 @@ scene("main", () => {
         z(200)
     ]);
     // Group to hold achievement icons
-    const achievementIcons = [];
-    function updateAchievements() {
-        // Remove old icons
-        for (const icon of achievementIcons) destroy(icon);
-        achievementIcons.length = 0;
-        // Add one icon for every 1000 points
-        const numAchievements = Math.floor(points / 1000);
-        // Center icons within the bar
-        const totalWidth = (numAchievements - 1) * achievementSpacing;
-        const startX = achievementBarX + (achievementBarWidth - totalWidth) / 2;
-        for (let i = 0; i < numAchievements; i++) {
-            const icon = add([
-                text(achievementIcon, { size: achievementIconSize }),
-                pos(startX + i * achievementSpacing, achievementBarY + 4),
-                z(201)
-            ]);
-            achievementIcons.push(icon);
-        }
-    }
+    // const achievementIcons = []; // Removed
+    // function updateAchievements() { // Removed
+    //     // Remove old icons
+    //     for (const icon of achievementIcons) destroy(icon);
+    //     achievementIcons.length = 0;
+    //     // Add one icon for every 1000 points
+    //     const numAchievements = Math.floor(points / 1000);
+    //     // Center icons within the bar
+    //     const totalWidth = (numAchievements - 1) * achievementSpacing;
+    //     const startX = achievementBarX + (achievementBarWidth - totalWidth) / 2;
+    //     for (let i = 0; i < numAchievements; i++) {
+    //         const icon = add([
+    //             text(achievementIcon, { size: achievementIconSize }),
+    //             pos(startX + i * achievementSpacing, achievementBarY + 4),
+    //             z(201)
+    //         ]);
+    //         achievementIcons.push(icon);
+    //     }
+    // }
+
+    // Add news headline text
+    const newsText = add([
+        text("", { size: 18, color: textColor, align: "center" }),
+        pos(width() / 2, achievementBarY + achievementBarHeight / 2),
+        anchor("center"),
+        z(201)
+    ]);
 
     // Update UI text regularly and upgrade buttons
     onUpdate(() => {
@@ -385,9 +393,23 @@ scene("main", () => {
         ppcText.text = "Points per Click: " + pointsPerClick;
         ppsText.text = "Points per Second: " + pointsPerSecond;
         updateUpgradeButtons(); // Keep buttons state updated
-        updateAchievements(); // Update achievements bar
+        // updateAchievements(); // Removed
         updateHatSprite(); // Keep hat in correct position
+        updateNewsHeadline(newsText); // Call function to update news headline
     });
+
+    // Function to update news headline based on score
+    function updateNewsHeadline(textElement) {
+        if (points >= 10000) {
+            textElement.text = "Axolotls invade the world!";
+        } else if (points === 1) {
+            textElement.text = "Axolotls almost extinct! World in panic!";
+        } else if (points > 1 && points < 10000) {
+            textElement.text = "News: Axolotl population growing.";
+        } else {
+             textElement.text = "News: Axolotl population stable.";
+        }
+    }
 
     // Update createShopButtons after points change
     onClick("axolotl", () => {

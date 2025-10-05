@@ -1,0 +1,15 @@
+{
+  "name": "zomzoms",
+  "version": "0.1.0",
+  "description": "ZomZoms - A ninja vs zombies survival game",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -p 8080 -o"
+  },
+  "keywords": ["game", "phaser", "zombies", "ninja", "8-bit"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
