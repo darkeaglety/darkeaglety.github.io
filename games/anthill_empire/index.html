@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
+    <title>Anthill Empire</title>
+    <style>
+      :root {
+        --soil: #3d2914;
+        --leaf: #6fbf73;
+        --sand: #e8d5a3;
+        --ink: #1a120a;
+        --panel: rgba(26, 18, 10, 0.82);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #1a2e1a;
+        font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+        color: var(--sand);
+        touch-action: none;
+      }
+
+      #game-root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      #canvas-host {
+        position: absolute;
+        inset: 0;
+      }
+
+      #canvas-host canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      #hud {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      #hud .panel {
+        pointer-events: auto;
+      }
+
+      #top-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem 1rem;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(180deg, var(--panel), transparent);
+      }
+
+      .stat {
+        background: var(--panel);
+        border: 1px solid rgba(232, 213, 163, 0.35);
+        border-radius: 999px;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.92rem;
+        white-space: nowrap;
+      }
+
+      .stat strong {
+        color: #fff6d8;
+      }
+
+      #tip {
+        position: absolute;
+        top: 4.2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: min(92vw, 420px);
+        text-align: center;
+        background: var(--panel);
+        border: 1px solid rgba(111, 191, 115, 0.45);
+        border-radius: 12px;
+        padding: 0.65rem 0.9rem;
+        font-size: 0.9rem;
+        line-height: 1.35;
+      }
+
+      #tip.hidden {
+        display: none;
+      }
+
+      #wave-banner {
+        position: absolute;
+        top: 42%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: clamp(1.4rem, 4vw, 2.2rem);
+        font-weight: bold;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        pointer-events: none;
+        text-align: center;
+      }
+
+      #wave-banner.show {
+        opacity: 1;
+      }
+
+      #bottom-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        justify-content: center;
+        padding: 0.85rem 1rem 1.1rem;
+        background: linear-gradient(0deg, var(--panel), transparent);
+      }
+
+      button.action {
+        appearance: none;
+        border: 1px solid rgba(232, 213, 163, 0.4);
+        background: linear-gradient(180deg, #5a3d1e, #3d2914);
+        color: var(--sand);
+        border-radius: 12px;
+        padding: 0.7rem 0.95rem;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        min-width: 7.5rem;
+      }
+
+      button.action:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      button.action:not(:disabled):hover {
+        border-color: var(--leaf);
+        color: #fff;
+      }
+
+      #win-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 16, 10, 0.72);
+        pointer-events: auto;
+        z-index: 5;
+      }
+
+      #win-overlay.show {
+        display: flex;
+      }
+
+      #win-overlay .card {
+        background: var(--panel);
+        border: 1px solid var(--leaf);
+        border-radius: 16px;
+        padding: 1.4rem 1.6rem;
+        text-align: center;
+        max-width: 90vw;
+      }
+
+      #win-overlay button {
+        margin-top: 0.9rem;
+      }
+
+      #gameover-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(20, 8, 8, 0.78);
+        pointer-events: auto;
+        z-index: 6;
+        padding: 1rem;
+      }
+
+      #gameover-overlay.show {
+        display: flex;
+      }
+
+      #gameover-overlay .card {
+        background: var(--panel);
+        border: 1px solid #c45c26;
+        border-radius: 16px;
+        padding: 1.4rem 1.6rem;
+        text-align: center;
+        max-width: 90vw;
+      }
+
+      #gameover-overlay h2 {
+        margin: 0 0 0.45rem;
+        color: #ffb4a2;
+      }
+
+      #gameover-overlay button {
+        margin-top: 0.9rem;
+      }
+
+      #fruit-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 16, 10, 0.55);
+        pointer-events: auto;
+        z-index: 4;
+        padding: 1rem;
+      }
+
+      #fruit-overlay.show {
+        display: flex;
+      }
+
+      #fruit-overlay .card {
+        background: var(--panel);
+        border: 1px solid #d4a017;
+        border-radius: 16px;
+        padding: 1.25rem 1.4rem;
+        text-align: center;
+        max-width: min(92vw, 380px);
+      }
+
+      #fruit-overlay h2 {
+        margin: 0 0 0.4rem;
+        font-size: 1.25rem;
+        color: #fff6d8;
+      }
+
+      #fruit-overlay p {
+        margin: 0 0 1rem;
+        font-size: 0.92rem;
+        line-height: 1.4;
+        opacity: 0.95;
+      }
+
+      #fruit-overlay .choice-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        justify-content: center;
+      }
+
+      #fruit-overlay .choice-row button {
+        min-width: 9.5rem;
+        flex: 1 1 9.5rem;
+      }
+
+      button.action.eat {
+        background: linear-gradient(180deg, #7a4a18, #4a2c0a);
+        border-color: #d4a017;
+      }
+
+      button.action.fortify {
+        background: linear-gradient(180deg, #3d6b3f, #1f3d22);
+        border-color: var(--leaf);
+      }
+
+      .raid-party {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.55rem;
+        border: 1px solid rgba(232, 213, 163, 0.35);
+        border-radius: 12px;
+        background: rgba(40, 26, 12, 0.55);
+        min-width: 0;
+      }
+
+      .raid-party-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        opacity: 0.9;
+        white-space: nowrap;
+      }
+
+      .raid-party strong {
+        min-width: 1.4rem;
+        text-align: center;
+        font-size: 1rem;
+        color: #fff6d8;
+      }
+
+      button.raid-step {
+        appearance: none;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 10px;
+        border: 1px solid rgba(232, 213, 163, 0.4);
+        background: linear-gradient(180deg, #5a3d1e, #3d2914);
+        color: var(--sand);
+        font-size: 1.15rem;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+      }
+
+      button.raid-step:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      button.raid-step:not(:disabled):hover {
+        border-color: var(--leaf);
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-root">
+      <div id="canvas-host"></div>
+      <div id="hud">
+        <div id="top-bar" class="panel">
+          <div class="stat">Food <strong id="stat-food">0</strong></div>
+          <div class="stat">Workers <strong id="stat-workers">0</strong></div>
+          <div class="stat">Soldiers <strong id="stat-soldiers">0</strong></div>
+          <div class="stat">Atk <strong id="stat-atk">8</strong></div>
+          <div class="stat">Nest Lv <strong id="stat-nest">1</strong></div>
+          <div class="stat">HP <strong id="stat-hp">100</strong></div>
+          <div class="stat">Wave <strong id="stat-wave">0</strong></div>
+        </div>
+        <div id="tip" class="panel">
+          Drag to look around. Set raid size below, then tap an orange nest. Wave N has N invaders. Nest takeovers are very hard!
+        </div>
+        <div id="wave-banner"></div>
+        <div id="bottom-bar" class="panel">
+          <button type="button" class="action" id="btn-worker">Hatch Worker</button>
+          <button type="button" class="action" id="btn-soldier">Hatch Soldier</button>
+          <button type="button" class="action" id="btn-upgrade">Upgrade Nest</button>
+          <div class="raid-party" id="raid-party" title="How many soldiers join the next raid">
+            <span class="raid-party-label">Raid size</span>
+            <button type="button" class="raid-step" id="btn-raid-minus" aria-label="Fewer raiders">−</button>
+            <strong id="raid-party-count">1</strong>
+            <button type="button" class="raid-step" id="btn-raid-plus" aria-label="More raiders">+</button>
+          </div>
+        </div>
+      </div>
+      <div id="fruit-overlay">
+        <div class="card">
+          <h2>Fruit returned!</h2>
+          <p id="fruit-desc">A worker brought back fruit. How should the colony use it?</p>
+          <div class="choice-row">
+            <button type="button" class="action eat" id="btn-eat-fruit">Eat fruit — stronger soldiers</button>
+            <button type="button" class="action fortify" id="btn-fortify-nest">Fortify nest — more HP</button>
+          </div>
+        </div>
+      </div>
+      <div id="win-overlay">
+        <div class="card">
+          <h2>Colony Ascendant!</h2>
+          <p>You reached Nest Level 3 and survived the waves. The anthill empire rises.</p>
+          <button type="button" class="action" id="btn-continue">Keep Playing</button>
+        </div>
+      </div>
+      <div id="gameover-overlay">
+        <div class="card">
+          <h2>Colony Fallen</h2>
+          <p>Your nest hit 0 HP and was overrun. Raise a new colony and try again.</p>
+          <button type="button" class="action" id="btn-restart">Try Again</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
