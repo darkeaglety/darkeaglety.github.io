@@ -13,6 +13,10 @@ import {
   RIVAL_DEFENDER_SPEED,
   RIVAL_NEST_RADIUS,
   SCOUT_SPEED,
+  SHOP_CHARGER_DAMAGE,
+  SHOP_CHARGER_HP,
+  SHOP_CHARGER_SPEED,
+  SHOP_WIZARD_HP,
   SOLDIER_SPEED,
 } from './constants.js';
 import { scoutCarryAmount } from './economy.js';
@@ -21,7 +25,7 @@ import { scoutCarryAmount } from './economy.js';
  * @typedef {'idle' | 'toFood' | 'toNest'} ScoutState
  * @typedef {{
  *   mesh: THREE.Group,
- *   role: 'scout' | 'soldier' | 'invader' | 'defender',
+ *   role: 'scout' | 'soldier' | 'invader' | 'defender' | 'wizard' | 'charger',
  *   state: ScoutState | 'patrol' | 'fight' | 'march' | 'raidOut' | 'raidReturn' | 'defend',
  *   homeNestId?: number,
  *   targetFood: FoodPile | null,
@@ -37,7 +41,7 @@ import { scoutCarryAmount } from './economy.js';
  * }} Ant
  *
  * @typedef {{
- *   mesh: THREE.Mesh,
+ *   mesh: THREE.Object3D,
  *   hit: THREE.Mesh,
  *   amount: number,
  *   maxAmount: number,
@@ -163,6 +167,80 @@ export function billboardHealthBars(ants, camera) {
 }
 
 /**
+ * Build a small apple/plum-style fruit (body + stem + leaf).
+ * @param {number} variant
+ * @returns {THREE.Group}
+ */
+function buildFruitMesh(variant = 0) {
+  const palettes = [
+    { body: 0xd32f2f, blush: 0xb71c1c, leaf: 0x43a047 }, // red apple
+    { body: 0xe67e22, blush: 0xd35400, leaf: 0x66bb6a }, // orange
+    { body: 0xf4d03f, blush: 0xf39c12, leaf: 0x2e7d32 }, // yellow
+    { body: 0x8e44ad, blush: 0x6c3483, leaf: 0x558b2f }, // plum
+    { body: 0xe91e63, blush: 0xc2185b, leaf: 0x7cb342 }, // berry-pink
+  ];
+  const c = palettes[variant % palettes.length];
+  const fruit = new THREE.Group();
+
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: c.body,
+    roughness: 0.42,
+    metalness: 0.04,
+  });
+  const blushMat = new THREE.MeshStandardMaterial({
+    color: c.blush,
+    roughness: 0.48,
+    metalness: 0.03,
+  });
+
+  // Main rounded fruit body, slightly squashed like an apple.
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 18, 14), bodyMat);
+  body.scale.set(1.05, 0.92, 1.0);
+  body.position.y = 0.48;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  fruit.add(body);
+
+  // Soft “cheek” to break the perfect sphere look.
+  const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12), blushMat);
+  cheek.scale.set(0.9, 0.85, 0.88);
+  cheek.position.set(0.12, 0.5, 0.08);
+  cheek.castShadow = true;
+  fruit.add(cheek);
+
+  // Tiny top dimple / calyx.
+  const dimple = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 8, 8),
+    new THREE.MeshStandardMaterial({ color: c.blush, roughness: 0.7 }),
+  );
+  dimple.scale.set(1, 0.35, 1);
+  dimple.position.y = 0.88;
+  fruit.add(dimple);
+
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.05, 0.26, 6),
+    new THREE.MeshStandardMaterial({ color: 0x5d4037, roughness: 0.9 }),
+  );
+  stem.position.y = 1.02;
+  stem.rotation.z = 0.18;
+  stem.castShadow = true;
+  fruit.add(stem);
+
+  const leaf = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2, 10, 8),
+    new THREE.MeshStandardMaterial({ color: c.leaf, roughness: 0.75 }),
+  );
+  leaf.scale.set(1.55, 0.22, 0.75);
+  leaf.position.set(0.26, 1.0, 0.02);
+  leaf.rotation.z = -0.55;
+  leaf.rotation.y = 0.35;
+  leaf.castShadow = true;
+  fruit.add(leaf);
+
+  return fruit;
+}
+
+/**
  * @param {THREE.Group} foodGroup
  * @returns {FoodPile[]}
  */
@@ -176,24 +254,17 @@ export function spawnFoodPiles(foodGroup) {
       FOOD_PILE_AMOUNT_MIN +
       Math.floor(Math.random() * (FOOD_PILE_AMOUNT_MAX - FOOD_PILE_AMOUNT_MIN + 1));
 
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.75, 14, 14),
-      new THREE.MeshStandardMaterial({
-        color: 0xd4a017,
-        emissive: 0x886600,
-        emissiveIntensity: 0.55,
-        roughness: 0.55,
-      }),
-    );
-    mesh.position.set(Math.cos(angle) * r, 0.4, Math.sin(angle) * r);
-    mesh.castShadow = true;
+    const mesh = buildFruitMesh(i);
+    mesh.position.set(Math.cos(angle) * r, 0.02, Math.sin(angle) * r);
+    mesh.rotation.y = Math.random() * Math.PI * 2;
     mesh.userData.foodIndex = i;
 
     // Large invisible hit target — screen picking is primary; this helps raycasts too.
     const hit = new THREE.Mesh(
-      new THREE.SphereGeometry(1.6, 8, 8),
+      new THREE.SphereGeometry(1.5, 8, 8),
       new THREE.MeshBasicMaterial({ visible: false }),
     );
+    hit.position.y = 0.5;
     hit.userData.foodIndex = i;
     mesh.add(hit);
 
@@ -225,9 +296,10 @@ export function updateFoodPiles(piles, now) {
     }
     if (pile.alive) {
       const t = performance.now() * 0.003;
-      pile.mesh.position.y = 0.4 + Math.sin(t + pile.mesh.position.x) * 0.05;
-      const s = 0.75 + 0.35 * (pile.amount / pile.maxAmount);
+      pile.mesh.position.y = 0.02 + Math.sin(t + pile.mesh.position.x) * 0.04;
+      const s = 0.78 + 0.32 * (pile.amount / pile.maxAmount);
       pile.mesh.scale.setScalar(s);
+      pile.mesh.rotation.y += 0.004;
     }
   }
 }
@@ -308,6 +380,84 @@ export function spawnSoldierVisual(antGroup) {
     speed: SOLDIER_SPEED,
     attackCd: 0,
     carry: 0,
+    hpBar: bar,
+    hpFill: fill,
+  };
+  syncHealthBar(ant);
+  return ant;
+}
+
+/**
+ * Wizard ant — ranged fruit-seed attacker (shop exclusive).
+ * @param {THREE.Group} antGroup
+ * @returns {Ant}
+ */
+export function spawnWizardAnt(antGroup) {
+  const mesh = makeAntMesh(0x6a1b9a, 1.05);
+  const hat = new THREE.Mesh(
+    new THREE.ConeGeometry(0.14, 0.28, 8),
+    new THREE.MeshStandardMaterial({ color: 0x4a148c, roughness: 0.6 }),
+  );
+  hat.position.set(0, 0.22, 0.28);
+  hat.rotation.x = 0.15;
+  hat.castShadow = true;
+  mesh.add(hat);
+
+  const a = Math.random() * Math.PI * 2;
+  mesh.position.set(
+    Math.cos(a) * (NEST_RADIUS + 0.6),
+    mesh.position.y,
+    Math.sin(a) * (NEST_RADIUS + 0.6),
+  );
+  const { bar, fill } = makeHealthBar();
+  antGroup.add(mesh);
+  antGroup.add(bar);
+  /** @type {Ant} */
+  const ant = {
+    mesh,
+    role: 'wizard',
+    state: 'patrol',
+    targetFood: null,
+    hp: SHOP_WIZARD_HP,
+    maxHp: SHOP_WIZARD_HP,
+    speed: SOLDIER_SPEED * 0.85,
+    attackCd: 0,
+    carry: 0,
+    hpBar: bar,
+    hpFill: fill,
+  };
+  syncHealthBar(ant);
+  return ant;
+}
+
+/**
+ * Charger ant — fast heavy melee (shop exclusive).
+ * @param {THREE.Group} antGroup
+ * @returns {Ant}
+ */
+export function spawnChargerAnt(antGroup) {
+  const mesh = makeAntMesh(0xe6b422, 1.28);
+  const a = Math.random() * Math.PI * 2;
+  mesh.position.set(
+    Math.cos(a) * (NEST_RADIUS + 0.55),
+    mesh.position.y,
+    Math.sin(a) * (NEST_RADIUS + 0.55),
+  );
+  const { bar, fill } = makeHealthBar();
+  antGroup.add(mesh);
+  antGroup.add(bar);
+  /** @type {Ant} */
+  const ant = {
+    mesh,
+    role: 'charger',
+    state: 'patrol',
+    targetFood: null,
+    hp: SHOP_CHARGER_HP,
+    maxHp: SHOP_CHARGER_HP,
+    speed: SHOP_CHARGER_SPEED,
+    attackCd: 0,
+    carry: 0,
+    attackDamage: SHOP_CHARGER_DAMAGE,
     hpBar: bar,
     hpFill: fill,
   };

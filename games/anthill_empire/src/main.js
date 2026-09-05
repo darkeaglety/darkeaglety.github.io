@@ -3,12 +3,13 @@ import {
   RAID_PICK_PX,
   RIVAL_NEST_CAPTURE_FOOD_BONUS,
   RIVAL_NEST_COUNT,
-  WIN_NEST_LEVEL,
-  WIN_WAVES_SURVIVED,
+  MINIGAME_PASSWORD,
+  WAVE_START_DELAY_MS,
 } from './constants.js';
 import {
   assignScoutsToPile,
   createColonyAntVisuals,
+  removeAnt,
   spawnFoodPiles,
   spawnScoutVisual,
   spawnSoldierVisual,
@@ -26,6 +27,7 @@ import {
   applyFruitChoice,
   createEconomy,
   idleWorkers,
+  resetColonyForDesert,
   tryHatchSoldier,
   tryHatchWorker,
   tryUpgradeNest,
@@ -34,6 +36,7 @@ import {
   beginRaid,
   allRivalDefenders,
   billboardRivalNestBars,
+  clearRivalNests,
   createRaidState,
   idleRaidSoldiers,
   pickRivalNestAtScreen,
@@ -41,15 +44,30 @@ import {
   updateRaid,
   updateRivalNests,
 } from './raids.js';
-import { attachOrbit, createWorld, setNestLevelVisual } from './scene.js';
+import {
+  clearSpecialAnts,
+  syncSpecialAntVisuals,
+  tryBuySpecialAnt,
+  updateSpecialAnts,
+} from './shop.js';
+import {
+  createTicTacToe,
+  playTicTacToeMove,
+  resetTicTacToe,
+} from './minigames.js';
+import { attachOrbit, applyDesertTheme, createWorld, setNestLevelVisual } from './scene.js';
 import {
   bindHud,
   hideTip,
   refreshHud,
   refreshRaidParty,
+  renderTicTacToe,
   setBanner,
   setFruitChoiceVisible,
   setGameOverVisible,
+  setMinigamesVisible,
+  setShopVisible,
+  setStageVisible,
   setTip,
   setWinVisible,
 } from './ui.js';
@@ -68,13 +86,20 @@ const fruitQueue = [];
 let fruitChoiceOpen = false;
 
 const foodPiles = spawnFoodPiles(world.foodGroup);
-const rivalNests = spawnRivalNests(world.scene, world.antGroup, RIVAL_NEST_COUNT, eco);
+/** @type {import('./raids.js').RivalNest[]} */
+let rivalNests = spawnRivalNests(world.scene, world.antGroup, RIVAL_NEST_COUNT, eco);
 const scouts = createColonyAntVisuals(world.antGroup, eco.workers);
 /** @type {import('./ants.js').Ant[]} */
 const soldiers = [];
+/** @type {import('./ants.js').Ant[]} */
+const specialAnts = [];
 for (let i = 0; i < eco.soldiers; i++) {
   soldiers.push(spawnSoldierVisual(world.antGroup));
 }
+
+let shopOpen = false;
+let minigamesOpen = false;
+const ttt = createTicTacToe();
 
 setNestLevelVisual(world.nest, eco.nestLevel);
 /** How many idle soldiers to send on the next nest raid. */
@@ -167,9 +192,134 @@ hud.btnContinue.addEventListener('click', () => {
   setWinVisible(hud, false);
 });
 
+function openMinigameLounge() {
+  setWinVisible(hud, false);
+  setShopVisible(hud, false);
+  shopOpen = false;
+  minigamesOpen = true;
+  resetTicTacToe(ttt);
+  renderTicTacToe(hud, ttt);
+  setMinigamesVisible(hud, true);
+}
+
+function tryPasswordTeleport() {
+  if ((eco.worldStage ?? 1) !== 1) return;
+  const typed = hud.passwordInput.value.trim().toLowerCase().replace(/\s+/g, '');
+  if (typed !== MINIGAME_PASSWORD) {
+    setTip(hud, 'Wrong password.');
+    tipHidden = false;
+    hideTipSoon();
+    return;
+  }
+  hud.passwordInput.value = '';
+  setTip(hud, 'Password accepted — jumping to the victory lounge!');
+  tipHidden = false;
+  hideTipSoon();
+  openMinigameLounge();
+}
+
+hud.btnPassword.addEventListener('click', () => {
+  tryPasswordTeleport();
+});
+
+hud.passwordInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    tryPasswordTeleport();
+  }
+});
+
+// Don't let typing in the password field start map drags.
+hud.passwordInput.addEventListener('pointerdown', (event) => {
+  event.stopPropagation();
+});
+
+hud.btnMinigames.addEventListener('click', () => {
+  openMinigameLounge();
+});
+
+hud.tttBoard.addEventListener('click', (event) => {
+  const target = /** @type {HTMLElement} */ (event.target);
+  const cell = target.closest('.ttt-cell');
+  if (!cell) return;
+  const index = Number(cell.getAttribute('data-cell'));
+  if (!Number.isFinite(index)) return;
+  if (!playTicTacToeMove(ttt, index)) return;
+  renderTicTacToe(hud, ttt);
+});
+
+hud.btnTttReset.addEventListener('click', () => {
+  resetTicTacToe(ttt);
+  renderTicTacToe(hud, ttt);
+});
+
+hud.btnMinigamesBack.addEventListener('click', () => {
+  minigamesOpen = false;
+  setMinigamesVisible(hud, false);
+});
+
+hud.btnMinigamesRestart.addEventListener('click', () => {
+  window.location.reload();
+});
+
+hud.btnStageContinue.addEventListener('click', () => {
+  setStageVisible(hud, false);
+  enterDesertLevel();
+});
+
 hud.btnRestart.addEventListener('click', () => {
   window.location.reload();
 });
+
+hud.btnShop.addEventListener('click', () => {
+  shopOpen = true;
+  setShopVisible(hud, true);
+  refreshHud(hud, eco, combat.wave);
+});
+
+hud.btnShopClose.addEventListener('click', () => {
+  shopOpen = false;
+  setShopVisible(hud, false);
+});
+
+hud.btnBuyWizard.addEventListener('click', () => {
+  if (!tryBuySpecialAnt(eco, 'wizard')) return;
+  syncSpecialAntVisuals(world.antGroup, specialAnts, eco);
+  setTip(hud, 'Wizard ant joined! It will pelt invaders with fruit seeds.');
+  tipHidden = false;
+  hideTipSoon();
+  syncHud();
+});
+
+hud.btnBuyCharger.addEventListener('click', () => {
+  if (!tryBuySpecialAnt(eco, 'charger')) return;
+  syncSpecialAntVisuals(world.antGroup, specialAnts, eco);
+  setTip(hud, 'Charger ant joined! A fast heavy hitter for your nest guard.');
+  tipHidden = false;
+  hideTipSoon();
+  syncHud();
+});
+
+function resetColonyVisuals() {
+  for (const ant of scouts) removeAnt(ant);
+  scouts.length = 0;
+  for (const ant of soldiers) removeAnt(ant);
+  soldiers.length = 0;
+  clearSpecialAnts(specialAnts, eco);
+  fruitQueue.length = 0;
+  fruitChoiceOpen = false;
+  setFruitChoiceVisible(hud, false);
+}
+
+function respawnStartingColony() {
+  scouts.push(...createColonyAntVisuals(world.antGroup, eco.workers));
+  for (let i = 0; i < eco.soldiers; i++) {
+    soldiers.push(spawnSoldierVisual(world.antGroup));
+  }
+  syncSpecialAntVisuals(world.antGroup, specialAnts, eco);
+  setNestLevelVisual(world.nest, eco.nestLevel);
+  raidPartySize = 1;
+}
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -247,7 +397,7 @@ host.addEventListener('pointerdown', (event) => {
  * @param {PointerEvent} event
  */
 function onPointerUp(event) {
-  if (eco.gameOver) return;
+  if (eco.gameOver || shopOpen) return;
   if (fruitChoiceOpen) {
     setTip(hud, 'Choose eat or fortify first — then send another worker.');
     tipHidden = false;
@@ -275,6 +425,12 @@ function onPointerUp(event) {
   if (rival) {
     if (raid.active) {
       setTip(hud, 'A raid is already underway — wait for your soldiers to return.');
+      tipHidden = false;
+      hideTipSoon();
+      return;
+    }
+    if (combat.invaders.length > 0) {
+      setTip(hud, 'Hold the nest! You can’t raid while an enemy wave is attacking.');
       tipHidden = false;
       hideTipSoon();
       return;
@@ -329,19 +485,91 @@ host.addEventListener('pointercancel', () => {
 
 function checkWin() {
   if (eco.won) return;
-  if (eco.nestLevel >= WIN_NEST_LEVEL && eco.wavesSurvived >= WIN_WAVES_SURVIVED) {
+  // Beat the game by conquering every desert nest.
+  if (
+    eco.worldStage >= 2 &&
+    rivalNests.length > 0 &&
+    rivalNests.every((n) => n.owned)
+  ) {
     eco.won = true;
+    setBanner(hud, 'Victory!', true);
     setWinVisible(hud, true);
   }
 }
 
+/**
+ * @param {import('./raids.js').RivalNest[]} nests
+ */
+function allNestsOwned(nests) {
+  return nests.length > 0 && nests.every((n) => n.owned);
+}
+
 let last = performance.now();
+let stageOfferOpen = false;
+
+function offerDesertLevel() {
+  if (eco.worldStage >= 2 || stageOfferOpen) return;
+  stageOfferOpen = true;
+  setStageVisible(hud, true, {
+    title: 'Level 2 — Desert Front',
+    desc: 'Every meadow nest is yours. The desert resets your colony — food, army, and nest level start fresh. Keep using the Ant Shop for special fighters!',
+    button: 'Enter the Desert',
+  });
+  setBanner(hud, 'Stage Clear!', true);
+}
+
+function enterDesertLevel() {
+  if (eco.worldStage >= 2) return;
+  stageOfferOpen = false;
+
+  // Abort any mid-raid so soldiers return home cleanly.
+  if (raid.active) {
+    for (const soldier of raid.raiders) {
+      if (soldier.state === 'raidOut' || soldier.state === 'raidReturn') {
+        soldier.state = 'patrol';
+        soldier.carry = 0;
+      }
+    }
+    raid.active = false;
+    raid.nest = null;
+    raid.raiders = [];
+  }
+
+  for (const inv of combat.invaders) removeAnt(inv);
+  combat.invaders = [];
+  combat.wave = 0;
+  combat.nextWaveAt = performance.now() + WAVE_START_DELAY_MS;
+  combat.banner = null;
+
+  clearRivalNests(rivalNests, world.scene);
+  resetColonyForDesert(eco);
+  resetColonyVisuals();
+  applyDesertTheme(world);
+  rivalNests = spawnRivalNests(world.scene, world.antGroup, RIVAL_NEST_COUNT, eco);
+  respawnStartingColony();
+
+  setBanner(hud, 'Desert Front!', true);
+  setTip(
+    hud,
+    'Fresh start in the desert! Hatch up, open the Ant Shop, and conquer every dune nest to win.',
+  );
+  tipHidden = false;
+  hideTipSoon();
+  syncHud();
+}
 
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
 
-  if (eco.gameOver) {
+  if (eco.gameOver || stageOfferOpen || minigamesOpen) {
+    world.renderer.render(world.scene, world.camera);
+    requestAnimationFrame(frame);
+    return;
+  }
+
+  // Pause the colony while the victory card is up.
+  if (hud.winOverlay.classList.contains('show')) {
     world.renderer.render(world.scene, world.camera);
     requestAnimationFrame(frame);
     return;
@@ -396,6 +624,13 @@ function frame(now) {
       tipHidden = false;
       hideTipSoon();
       syncHud();
+      if (allNestsOwned(rivalNests)) {
+        if (eco.worldStage < 2) {
+          offerDesertLevel();
+        } else {
+          checkWin();
+        }
+      }
     },
     world.antGroup,
   );
@@ -413,6 +648,7 @@ function frame(now) {
       setBanner(hud, text, true);
     },
     raidSafe,
+    eco,
   );
 
   updateCombat(
@@ -430,10 +666,18 @@ function frame(now) {
       syncHud();
     },
     raidSafe,
+    (food) => {
+      setTip(hud, `Wave cleared! The colony claimed ${food} food from the fallen invaders.`);
+      tipHidden = false;
+      hideTipSoon();
+      syncHud();
+    },
   );
 
+  updateSpecialAnts(combat, specialAnts, eco, world.antGroup, dt, now, raidSafe);
+
   billboardHealthBars(
-    [...combat.invaders, ...soldiers, ...allRivalDefenders(rivalNests)],
+    [...combat.invaders, ...soldiers, ...specialAnts, ...allRivalDefenders(rivalNests)],
     world.camera,
   );
   billboardRivalNestBars(rivalNests, world.camera);

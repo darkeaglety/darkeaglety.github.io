@@ -7,12 +7,15 @@ import {
   NEST_RADIUS,
   SOLDIER_ATTACK_COOLDOWN_MS,
   SOLDIER_RANGE,
+  WAVE_CLEAR_FOOD_BASE,
+  WAVE_CLEAR_FOOD_PER_WAVE,
   WAVE_INTERVAL_MS,
   WAVE_INVADER_HP_PER_WAVE,
   WAVE_START_DELAY_MS,
+  stageProfile,
 } from './constants.js';
 import { moveToward, removeAnt, spawnInvader, syncHealthBar } from './ants.js';
-import { damageNest, soldierDamage } from './economy.js';
+import { damageNest, depositFood, soldierDamage } from './economy.js';
 
 /**
  * @typedef {import('./ants.js').Ant} Ant
@@ -46,8 +49,9 @@ export function createCombatState() {
  * @param {number} now
  * @param {(text: string) => void} showBanner
  * @param {boolean} [raidSafe]
+ * @param {Economy} [eco]
  */
-export function maybeSpawnWave(combat, antGroup, now, showBanner, raidSafe = false) {
+export function maybeSpawnWave(combat, antGroup, now, showBanner, raidSafe = false, eco = null) {
   if (raidSafe) {
     // Hold waves while the colony is away raiding.
     combat.nextWaveAt = Math.max(combat.nextWaveAt, now + 1500);
@@ -59,9 +63,12 @@ export function maybeSpawnWave(combat, antGroup, now, showBanner, raidSafe = fal
     return;
   }
 
+  const profile = stageProfile(eco?.worldStage ?? 1);
   combat.wave += 1;
   const count = combat.wave;
-  const hp = INVADER_HP + (combat.wave - 1) * WAVE_INVADER_HP_PER_WAVE;
+  const hp = Math.round(
+    (INVADER_HP + (combat.wave - 1) * WAVE_INVADER_HP_PER_WAVE) * profile.invaderHpMult,
+  );
 
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -73,10 +80,13 @@ export function maybeSpawnWave(combat, antGroup, now, showBanner, raidSafe = fal
     combat.invaders.push(spawnInvader(antGroup, from, hp));
   }
 
-  showBanner(`Wave ${combat.wave}`);
-  combat.banner = `Wave ${combat.wave}`;
+  const label = eco?.worldStage && eco.worldStage > 1
+    ? `Desert Wave ${combat.wave}`
+    : `Wave ${combat.wave}`;
+  showBanner(label);
+  combat.banner = label;
   combat.bannerUntil = now + 2200;
-  combat.nextWaveAt = now + WAVE_INTERVAL_MS;
+  combat.nextWaveAt = now + WAVE_INTERVAL_MS * profile.waveIntervalMult;
 }
 
 /**
@@ -87,8 +97,18 @@ export function maybeSpawnWave(combat, antGroup, now, showBanner, raidSafe = fal
  * @param {number} now
  * @param {() => void} onNestBreached
  * @param {boolean} [raidSafe]
+ * @param {(food: number) => void} [onWaveCleared]
  */
-export function updateCombat(combat, soldiers, eco, dt, now, onNestBreached, raidSafe = false) {
+export function updateCombat(
+  combat,
+  soldiers,
+  eco,
+  dt,
+  now,
+  onNestBreached,
+  raidSafe = false,
+  onWaveCleared = null,
+) {
   const nest = new THREE.Vector3(0, 0, 0);
 
   // During a raid, clear invaders and skip fighting — home nest is protected.
@@ -171,7 +191,8 @@ export function updateCombat(combat, soldiers, eco, dt, now, onNestBreached, rai
     if (dist > NEST_RADIUS * 0.85) {
       moveToward(inv.mesh, nest, inv.speed, dt, NEST_RADIUS * 0.8);
     } else if (inv.attackCd <= 0) {
-      const dead = damageNest(eco, INVADER_DAMAGE);
+      const dmg = INVADER_DAMAGE * stageProfile(eco.worldStage ?? 1).invaderDamageMult;
+      const dead = damageNest(eco, dmg);
       inv.attackCd = INVADER_ATTACK_COOLDOWN_MS;
       inv.mesh.scale.setScalar(1.15);
       setTimeout(() => inv.mesh.scale.setScalar(1.05), 80);
@@ -191,8 +212,11 @@ export function updateCombat(combat, soldiers, eco, dt, now, onNestBreached, rai
 
   if (combat.invaders.length > 0 && remaining.length === 0) {
     eco.wavesSurvived += 1;
-    combat.banner = `Wave cleared!`;
-    combat.bannerUntil = now + 1600;
+    const food = WAVE_CLEAR_FOOD_BASE + combat.wave * WAVE_CLEAR_FOOD_PER_WAVE;
+    depositFood(eco, food);
+    combat.banner = `Wave cleared! +${food} food`;
+    combat.bannerUntil = now + 1800;
+    onWaveCleared?.(food);
   }
   combat.invaders = remaining;
 }

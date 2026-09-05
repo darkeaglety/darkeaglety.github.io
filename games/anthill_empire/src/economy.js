@@ -13,6 +13,7 @@ import {
   STARTING_NEST_LEVEL,
   STARTING_SOLDIERS,
   STARTING_WORKERS,
+  DESERT_START_FOOD,
   WORKER_COST_BASE,
   WORKER_COST_PER_NEST_LEVEL,
 } from './constants.js';
@@ -30,6 +31,9 @@ import {
  *   won: boolean,
  *   gameOver: boolean,
  *   soldierBonusDamage: number,
+ *   worldStage: number,
+ *   wizards: number,
+ *   chargers: number,
  * }} Economy
  */
 
@@ -47,7 +51,31 @@ export function createEconomy() {
     won: false,
     gameOver: false,
     soldierBonusDamage: 0,
+    worldStage: 1,
+    wizards: 0,
+    chargers: 0,
   };
+}
+
+/**
+ * Reset colony progress for a fresh desert run (keeps worldStage = 2).
+ * @param {Economy} eco
+ */
+export function resetColonyForDesert(eco) {
+  eco.food = DESERT_START_FOOD;
+  eco.workers = STARTING_WORKERS;
+  eco.soldiers = STARTING_SOLDIERS;
+  eco.nestLevel = STARTING_NEST_LEVEL;
+  eco.nestHp = STARTING_NEST_HP;
+  eco.nestHpMax = STARTING_NEST_HP;
+  eco.scoutsBusy = 0;
+  eco.wavesSurvived = 0;
+  eco.soldierBonusDamage = 0;
+  eco.wizards = 0;
+  eco.chargers = 0;
+  eco.won = false;
+  eco.gameOver = false;
+  eco.worldStage = 2;
 }
 
 /** @param {Economy} eco */

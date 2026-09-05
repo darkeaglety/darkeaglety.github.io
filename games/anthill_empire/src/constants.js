@@ -9,6 +9,8 @@ export const STARTING_WORKERS = 4;
 export const STARTING_SOLDIERS = 1;
 export const STARTING_NEST_LEVEL = 1;
 export const STARTING_NEST_HP = 100;
+/** Fresh colony stats when entering the desert (progress restart). */
+export const DESERT_START_FOOD = 30;
 
 /** Hatch costs start cheap; nest level adds only a tiny bump. */
 export const WORKER_COST_BASE = 4;
@@ -56,6 +58,9 @@ export const WAVE_START_DELAY_MS = 14000;
 export const WAVE_INTERVAL_MS = 24000;
 /** Wave N always spawns exactly N invaders (wave 1 = 1 ant). */
 export const WAVE_INVADER_HP_PER_WAVE = 2;
+/** Small food bonus for clearing a wave (wave 1 = 5, then +1 each wave). */
+export const WAVE_CLEAR_FOOD_BASE = 4;
+export const WAVE_CLEAR_FOOD_PER_WAVE = 1;
 
 /** Rival nests you can raid for stolen food. */
 export const RIVAL_NEST_COUNT = 3;
@@ -71,6 +76,8 @@ export const RIVAL_DEFENDER_DAMAGE = 5;
 export const RIVAL_DEFENDER_SPEED = 3.4;
 export const RIVAL_DEFENDER_RANGE = 3.2;
 export const RIVAL_DEFENDER_ATTACK_COOLDOWN_MS = 520;
+/** During a raid, at most one replacement defender spawns this often. */
+export const RIVAL_DEFENDER_SPAWN_INTERVAL_MS = 3000;
 /** How quickly rival nests scale with colony power (nest level, soldiers, atk). */
 export const RAID_SCALE_PER_POWER = 0.11;
 export const RAID_MAX_DEFENDERS = 6;
@@ -85,9 +92,73 @@ export const RIVAL_NEST_CAPTURE_FOOD_BONUS = 55;
 export const CAPTURED_NEST_FOOD_TICK_MS = 9000;
 export const CAPTURED_NEST_FOOD_PER_TICK = 4;
 
+/**
+ * World stage (meadow = 1, desert = 2). Separate from nest upgrade level.
+ * @typedef {{
+ *   invaderHpMult: number,
+ *   invaderDamageMult: number,
+ *   waveIntervalMult: number,
+ *   nestHpMult: number,
+ *   defenderHpMult: number,
+ *   defenderDamageMult: number,
+ *   defendersBonus: number,
+ *   maxDefendersBonus: number,
+ * }} StageProfile
+ */
+
+/** @type {Record<number, StageProfile>} */
+export const STAGE_PROFILES = {
+  1: {
+    invaderHpMult: 1,
+    invaderDamageMult: 1,
+    waveIntervalMult: 1,
+    nestHpMult: 1,
+    defenderHpMult: 1,
+    defenderDamageMult: 1,
+    defendersBonus: 0,
+    maxDefendersBonus: 0,
+  },
+  2: {
+    invaderHpMult: 1.45,
+    invaderDamageMult: 1.3,
+    waveIntervalMult: 0.8,
+    nestHpMult: 1.4,
+    defenderHpMult: 1.35,
+    defenderDamageMult: 1.25,
+    defendersBonus: 1,
+    maxDefendersBonus: 2,
+  },
+};
+
+/** @param {number} stage */
+export function stageProfile(stage) {
+  return STAGE_PROFILES[stage] || STAGE_PROFILES[1];
+}
+
 export const CAMERA_DISTANCE = 34;
 export const CAMERA_HEIGHT = 26;
 export const CAMERA_LOOK_Y = 0.4;
 export const CAMERA_PAN_SPEED = 0.045;
 export const CAMERA_MIN_PITCH = 0.35;
 export const CAMERA_MAX_PITCH = 1.15;
+export const CAMERA_MIN_ZOOM = 12;
+export const CAMERA_MAX_ZOOM = 72;
+export const CAMERA_ZOOM_SPEED = 0.0018;
+
+/** Meadow-only cheat password → victory lounge (lowercase, no spaces). */
+export const MINIGAME_PASSWORD = 'antconquest';
+
+/** Special ants — sold in the Ant Shop on every stage. */
+export const SHOP_WIZARD_COST = 45;
+export const SHOP_WIZARD_HP = 50;
+export const SHOP_WIZARD_RANGE = 9;
+export const SHOP_WIZARD_COOLDOWN_MS = 850;
+export const WIZARD_SEED_SPEED = 14;
+export const WIZARD_SEED_DAMAGE = 12;
+export const WIZARD_SEED_LIFETIME_MS = 2200;
+
+export const SHOP_CHARGER_COST = 32;
+export const SHOP_CHARGER_HP = 70;
+export const SHOP_CHARGER_DAMAGE = 14;
+export const SHOP_CHARGER_SPEED = 5.2;
+export const SHOP_MAX_SPECIAL_PER_TYPE = 4;

@@ -12,6 +12,7 @@ import {
   RIVAL_DEFENDER_DAMAGE,
   RIVAL_DEFENDER_HP,
   RIVAL_DEFENDER_RANGE,
+  RIVAL_DEFENDER_SPAWN_INTERVAL_MS,
   RIVAL_DEFENDERS_PER_NEST,
   RIVAL_NEST_CAPTURE_FOOD_BONUS,
   RIVAL_NEST_HP_BASE,
@@ -22,6 +23,7 @@ import {
   RIVAL_NEST_SIEGE_DAMAGE_MULT,
   SOLDIER_ATTACK_COOLDOWN_MS,
   SOLDIER_RANGE,
+  stageProfile,
 } from './constants.js';
 import {
   createHealthBar,
@@ -51,6 +53,7 @@ import { colonyPower, depositFood, soldierDamage } from './economy.js';
  *   owned: boolean,
  *   reinforced: boolean,
  *   nextTributeAt: number,
+ *   nextDefenderSpawnAt: number,
  *   role: 'nest',
  * }} RivalNest
  *
@@ -90,13 +93,14 @@ export function spawnRivalNests(scene, antGroup, count, eco) {
         defenderDamage: RIVAL_DEFENDER_DAMAGE,
         nestHp: RIVAL_NEST_HP_BASE,
       };
+  const desert = (eco?.worldStage ?? 1) >= 2;
 
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * Math.PI * 2 + 0.35;
     const x = Math.cos(angle) * ring;
     const z = Math.sin(angle) * ring;
     const position = new THREE.Vector3(x, 0, z);
-    const mesh = buildRivalNestMesh();
+    const mesh = buildRivalNestMesh(desert);
     mesh.position.copy(position);
     mesh.userData.rivalNestId = i;
     scene.add(mesh);
@@ -104,7 +108,7 @@ export function spawnRivalNests(scene, antGroup, count, eco) {
     const marker = new THREE.Mesh(
       new THREE.RingGeometry(RIVAL_NEST_RADIUS * 0.9, RIVAL_NEST_RADIUS * 1.35, 24),
       new THREE.MeshBasicMaterial({
-        color: 0xc45c26,
+        color: desert ? 0xd4783a : 0xc45c26,
         transparent: true,
         opacity: 0.55,
         depthWrite: false,
@@ -146,6 +150,7 @@ export function spawnRivalNests(scene, antGroup, count, eco) {
       owned: false,
       reinforced: false,
       nextTributeAt: 0,
+      nextDefenderSpawnAt: 0,
       role: 'nest',
     };
     syncHealthBar(nest, 1.35);
@@ -154,13 +159,16 @@ export function spawnRivalNests(scene, antGroup, count, eco) {
   return nests;
 }
 
-function buildRivalNestMesh() {
+function buildRivalNestMesh(desert = false) {
   const nest = new THREE.Group();
   nest.name = 'rivalNest';
 
   const mound = new THREE.Mesh(
     new THREE.ConeGeometry(RIVAL_NEST_RADIUS, 1.7, 14),
-    new THREE.MeshStandardMaterial({ color: 0x5c2a1a, roughness: 0.95 }),
+    new THREE.MeshStandardMaterial({
+      color: desert ? 0xa67c52 : 0x5c2a1a,
+      roughness: 0.95,
+    }),
   );
   mound.position.y = 0.85;
   mound.castShadow = true;
@@ -169,7 +177,10 @@ function buildRivalNestMesh() {
 
   const lip = new THREE.Mesh(
     new THREE.TorusGeometry(RIVAL_NEST_RADIUS * 0.45, 0.14, 8, 16),
-    new THREE.MeshStandardMaterial({ color: 0x3a1810, roughness: 1 }),
+    new THREE.MeshStandardMaterial({
+      color: desert ? 0x7a5230 : 0x3a1810,
+      roughness: 1,
+    }),
   );
   lip.rotation.x = Math.PI / 2;
   lip.position.y = 0.15;
@@ -186,6 +197,22 @@ function buildRivalNestMesh() {
   return nest;
 }
 
+/**
+ * Remove all rival nest visuals and defenders from the scene.
+ * @param {RivalNest[]} nests
+ * @param {THREE.Scene} scene
+ */
+export function clearRivalNests(nests, scene) {
+  for (const nest of nests) {
+    for (const def of nest.defenders) removeAnt(def);
+    nest.defenders = [];
+    scene.remove(nest.mesh);
+    scene.remove(nest.marker);
+    if (nest.hpBar) scene.remove(nest.hpBar);
+  }
+  nests.length = 0;
+}
+
 function randomRaidLoot() {
   return (
     RAID_STEAL_FOOD_MIN +
@@ -199,17 +226,25 @@ function randomRaidLoot() {
  */
 export function raidDifficulty(eco) {
   const power = Math.max(1, colonyPower(eco));
+  const profile = stageProfile(eco.worldStage ?? 1);
   const scale = 1 + (power - 1) * RAID_SCALE_PER_POWER;
   return {
     power,
     scale,
     defenderCount: Math.min(
-      RAID_MAX_DEFENDERS,
-      RIVAL_DEFENDERS_PER_NEST + Math.floor((power - 1) * 0.55),
+      RAID_MAX_DEFENDERS + profile.maxDefendersBonus,
+      RIVAL_DEFENDERS_PER_NEST +
+        profile.defendersBonus +
+        Math.floor((power - 1) * 0.55),
     ),
-    defenderHp: Math.round(RIVAL_DEFENDER_HP * scale),
-    defenderDamage: Math.round(RIVAL_DEFENDER_DAMAGE * (1 + (power - 1) * 0.1) * 10) / 10,
-    nestHp: Math.round(RIVAL_NEST_HP_BASE + (power - 1) * RIVAL_NEST_HP_PER_POWER),
+    defenderHp: Math.round(RIVAL_DEFENDER_HP * scale * profile.defenderHpMult),
+    defenderDamage:
+      Math.round(
+        RIVAL_DEFENDER_DAMAGE * (1 + (power - 1) * 0.1) * profile.defenderDamageMult * 10,
+      ) / 10,
+    nestHp: Math.round(
+      (RIVAL_NEST_HP_BASE + (power - 1) * RIVAL_NEST_HP_PER_POWER) * profile.nestHpMult,
+    ),
   };
 }
 
@@ -217,16 +252,20 @@ export function raidDifficulty(eco) {
  * @param {RivalNest} nest
  * @param {THREE.Group} antGroup
  * @param {Economy} eco
+ * @param {{ maxSpawn?: number }} [opts]
  */
-function refillDefenders(nest, antGroup, eco) {
+function refillDefenders(nest, antGroup, eco, opts = {}) {
   const diff = raidDifficulty(eco);
-  while (nest.defenders.length < diff.defenderCount) {
+  const maxSpawn = opts.maxSpawn ?? Infinity;
+  let spawned = 0;
+  while (nest.defenders.length < diff.defenderCount && spawned < maxSpawn) {
     nest.defenders.push(
       spawnRivalDefender(antGroup, nest.position, nest.id, {
         hp: diff.defenderHp,
         damage: diff.defenderDamage,
       }),
     );
+    spawned += 1;
   }
   // Beef up survivors if the colony got stronger since last fight.
   for (const def of nest.defenders) {
@@ -240,6 +279,23 @@ function refillDefenders(nest, antGroup, eco) {
       def.attackDamage = diff.defenderDamage;
     }
   }
+}
+
+/**
+ * During a raid, spawn at most one replacement defender every few seconds.
+ * @param {RivalNest} nest
+ * @param {THREE.Group} antGroup
+ * @param {Economy} eco
+ * @param {number} now
+ */
+function trySpawnDefenderThrottled(nest, antGroup, eco, now) {
+  const diff = raidDifficulty(eco);
+  // Keep existing guards scaled, but do not refill the whole nest instantly.
+  refillDefenders(nest, antGroup, eco, { maxSpawn: 0 });
+  if (nest.defenders.length >= diff.defenderCount) return;
+  if (now < nest.nextDefenderSpawnAt) return;
+  refillDefenders(nest, antGroup, eco, { maxSpawn: 1 });
+  nest.nextDefenderSpawnAt = now + RIVAL_DEFENDER_SPAWN_INTERVAL_MS;
 }
 
 /**
@@ -274,7 +330,12 @@ export function updateRivalNests(nests, antGroup, now, dt, raidingNestId, eco) {
       nest.foodStock = randomRaidLoot();
       refillDefenders(nest, antGroup, eco);
     } else if (ready) {
-      refillDefenders(nest, antGroup, eco);
+      if (raidingNestId === nest.id) {
+        // Don't instantly replace every kill — drip new guards in slowly.
+        trySpawnDefenderThrottled(nest, antGroup, eco, now);
+      } else {
+        refillDefenders(nest, antGroup, eco);
+      }
     }
 
     // Creep HP back very slowly when the nest is not under active siege.
@@ -359,6 +420,8 @@ export function beginRaid(raid, nest, soldiers, maxRaiders = 2, eco = null, antG
 
   if (eco && antGroup) {
     refillDefenders(nest, antGroup, eco);
+    // First replacement after a kill waits a full interval.
+    nest.nextDefenderSpawnAt = performance.now() + RIVAL_DEFENDER_SPAWN_INTERVAL_MS;
     const diff = raidDifficulty(eco);
     if (nest.maxHp < diff.nestHp) {
       const ratio = nest.hp / Math.max(1, nest.maxHp);
