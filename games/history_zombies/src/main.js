@@ -245,6 +245,7 @@ function bonkPlayer(dmg) {
   if (player.hp <= 0) {
     mode = 'over';
     save.coins = 0;
+    save.kills = 0;
     writeSave(save);
     setOverlay(hud.over, true);
   }
