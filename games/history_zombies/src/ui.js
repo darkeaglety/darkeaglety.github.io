@@ -1,5 +1,5 @@
-import { MAX_LEVEL, WEAPONS } from './constants.js';
-import { equip, buyWeapon, upgradeCost, upgradeWeapon, owns } from './economy.js';
+import { BOSS_KILLS, MAX_ARMOR, MAX_LEVEL, WEAPONS } from './constants.js';
+import { armorCost, buyArmor, equip, buyWeapon, upgradeCost, upgradeWeapon, owns } from './economy.js';
 
 const $ = (id) => document.getElementById(id);
 const ICONS = { foam: '\u{1F5E1}\uFE0F', noodle: '\u{1F35C}', confetti: '\u{1F389}', bubble: '\u{1FAE7}', star: '\u{1FA84}' };
@@ -9,6 +9,8 @@ export function bindHud() {
     coins: $('stat-coins'),
     hp: $('stat-hp'),
     wave: $('stat-wave'),
+    bonks: $('stat-bonks'),
+    armor: $('stat-armor'),
     team: $('stat-team'),
     boss: $('boss'),
     bossName: $('boss-name'),
@@ -75,6 +77,8 @@ export function refreshHud(hud, save, player, wave, hasGeorge) {
   hud.coins.textContent = String(save.coins);
   hud.hp.style.width = `${Math.max(0, (player.hp / player.hpMax) * 100)}%`;
   hud.wave.textContent = String(wave);
+  hud.bonks.textContent = hasGeorge ? 'Done!' : `${Math.min(save.kills, BOSS_KILLS)}/${BOSS_KILLS}`;
+  hud.armor.textContent = String(save.armor || 0);
   hud.team.textContent = hasGeorge ? 'You + George' : 'You';
 }
 
@@ -109,6 +113,31 @@ export function renderHotbar(hud, save, onPick) {
 export function renderShop(hud, save, changed) {
   hud.shopCoins.textContent = String(save.coins);
   hud.shopGrid.innerHTML = '';
+  {
+    const lvl = save.armor || 0;
+    const el = document.createElement('div');
+    el.className = 'item';
+    const pips = Array.from({ length: MAX_ARMOR }, (_, i) => `<i class="${i < lvl ? 'on' : ''}"></i>`).join('');
+    el.innerHTML = `<h3><span>\u{1F6E1}\uFE0F Shiny Armor</span><span>Lv ${lvl}</span></h3><p>Take less damage and get extra hearts. Each level adds a new piece!</p><div class="pips">${pips}</div>`;
+    const row = document.createElement('div');
+    row.className = 'row';
+    const b = document.createElement('button');
+    b.className = 'big';
+    if (lvl >= MAX_ARMOR) {
+      b.textContent = 'Maxed!';
+      b.disabled = true;
+    } else {
+      const c = armorCost(save);
+      b.textContent = `Upgrade (${c})`;
+      b.disabled = save.coins < c;
+      b.addEventListener('click', () => {
+        if (buyArmor(save)) changed();
+      });
+    }
+    row.appendChild(b);
+    el.appendChild(row);
+    hud.shopGrid.appendChild(el);
+  }
   for (const w of WEAPONS) {
     const has = owns(save, w.id);
     const lvl = save.owned[w.id] ?? 0;

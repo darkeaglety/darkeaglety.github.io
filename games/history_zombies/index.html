@@ -136,6 +136,8 @@
         <div id="top-bar">
           <div class="pill">Coins <b id="stat-coins">0</b></div>
           <div class="pill">Hero <span class="hpbar"><i id="stat-hp"></i></span></div>
+          <div class="pill">Bonks <b id="stat-bonks">0/35</b></div>
+          <div class="pill">Armor <b id="stat-armor">0</b></div>
           <div class="pill">Wave <b id="stat-wave">0</b></div>
           <div class="pill">Team <b id="stat-team">You</b></div>
         </div>
@@ -157,8 +159,8 @@
       <div id="menu-overlay" class="overlay show">
         <div class="card">
           <h1>History Zombies</h1>
-          <p><strong>Mission 1: The White House.</strong><br />Silly zombies have wandered onto the lawn. Bop them with foam and confetti, earn coins, upgrade your gear, and find the sleepy zombie hiding behind the mansion. Maybe you can cure him and make a friend!</p>
-          <div class="keys">WASD / arrows move &middot; mouse aim &middot; click or Space attack &middot; 1-5 switch gear &middot; B workshop</div>
+          <p><strong>Mission 1: The White House.</strong><br />Silly zombies have wandered onto the lawn. Bop them with foam and confetti, earn coins, upgrade your gear, and bonk 35 zombies to wake the sleepy zombie hiding behind the mansion. Maybe you can cure him and make a friend!</p>
+          <div class="keys">WASD / arrows move &middot; mouse aim &middot; click or Space attack &middot; 1-5 switch gear &middot; B workshop<br />Q / E or right-drag rotate camera &middot; mouse wheel zoom</div>
           <button class="big green" id="btn-start" type="button">Start Mission</button><br />
           <button class="link" id="btn-reset" type="button">Reset saved progress</button>
         </div>
@@ -176,7 +178,7 @@
       <div id="over-overlay" class="overlay">
         <div class="card">
           <h2>Boop! You got bonked out!</h2>
-          <p>Don't worry, everyone's fine. Your coins and gear are saved. Try again!</p>
+          <p>Everyone's fine, but you dropped all your coins! Your gear and armor are safe. Try again!</p>
           <button class="big green" id="btn-retry" type="button">Try Again</button>
         </div>
       </div>

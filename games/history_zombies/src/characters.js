@@ -110,6 +110,9 @@ export function buildCharacter(o) {
   for (const h of hats) addHat(head, h);
   if (o.extra) addExtra(body, o.extra);
 
+  root.traverse((m) => {
+    if (m.isMesh) m.castShadow = !!o.cast;
+  });
   root.scale.setScalar(o.scale || 1);
   return {
     root,

@@ -20,7 +20,7 @@ const PEACH = new THREE.Color(0xffd2a8);
  * @param {THREE.Group} group @param {{x:number,z:number}} pos
  */
 export function createBoss(group, pos) {
-  const ch = buildCharacter({ skin: 0x9be08a, ...GEORGE, scale: 2.0, gait: 4, zombie: true });
+  const ch = buildCharacter({ skin: 0x9be08a, ...GEORGE, scale: 2.0, gait: 4, zombie: true, cast: true });
   ch.root.position.set(pos.x, 0, pos.z);
   ch.root.rotation.y = 0;
   group.add(ch.root);

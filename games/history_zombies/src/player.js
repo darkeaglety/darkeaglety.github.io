@@ -13,6 +13,7 @@ export function createPlayer(group, start) {
     extra: 'cape',
     scale: 1.15,
     gait: 11,
+    cast: true,
   });
   ch.root.position.set(start.x, 0, start.z);
 
@@ -90,4 +91,49 @@ export function animatePlayer(player, t, dt) {
   ch.root.visible = !(player.invuln > 0 && Math.floor(t * 20) % 2 === 0);
   // Cape flutter.
   ch.body.rotation.x = -player.moving * 0.12;
+}
+
+const ARMOR_COLORS = [0xb0bec5, 0x90caf9, 0xffd54f, 0xff8a65, 0xce93d8];
+
+/** Shiny armor that grows with each armor level. */
+export function setArmorVisual(player, level) {
+  const ch = player.ch;
+  for (const o of player.armorParts || []) o.parent?.remove(o);
+  player.armorParts = [];
+  if (level <= 0) return;
+  const color = ARMOR_COLORS[Math.min(level, 5) - 1];
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.25, metalness: 0.6, emissive: color, emissiveIntensity: 0.12 });
+  const add = (parent, mesh) => {
+    parent.add(mesh);
+    player.armorParts.push(mesh);
+  };
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.41, 0.55, 12), mat);
+  plate.position.y = 0.1;
+  add(ch.body, plate);
+  if (level >= 2) {
+    for (const arm of [ch.armL, ch.armR]) {
+      const pad = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), mat);
+      pad.position.y = 0.02;
+      add(arm, pad);
+    }
+  }
+  if (level >= 3) {
+    for (const leg of [ch.legL, ch.legR]) {
+      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.17, 0.3, 10), mat);
+      boot.position.y = -0.5;
+      add(leg, boot);
+    }
+  }
+  if (level >= 4) {
+    const badge = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshStandardMaterial({ color: 0xffe14a, emissive: 0xffc400, emissiveIntensity: 0.8 }));
+    badge.position.set(0, 0.15, 0.46);
+    badge.scale.z = 0.4;
+    add(ch.body, badge);
+  }
+  if (level >= 5) {
+    const ringM = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 6, 20), new THREE.MeshBasicMaterial({ color: 0xffe14a }));
+    ringM.rotation.x = Math.PI / 2;
+    ringM.position.y = -0.3;
+    add(ch.body, ringM);
+  }
 }

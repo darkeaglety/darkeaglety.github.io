@@ -4,6 +4,8 @@ export const PLAYER_HP = 100;
 export const PLAYER_SPEED = 9.5;
 export const PLAYER_RADIUS = 0.6;
 export const MAX_LEVEL = 5;
+export const BOSS_KILLS = 35;
+export const MAX_ARMOR = 5;
 
 /**
  * Kid-friendly gear only: foam, noodles, confetti, bubbles and sparkles.
@@ -120,7 +122,7 @@ export const ZOMBIE_TYPES = {
 
 export const WAVE_PAUSE = 4;
 export const WAVE_SPAWN_GAP = 0.32;
-export const MAX_ALIVE = 26;
+export const MAX_ALIVE = 16;
 
 /** @param {number} w */
 export function waveList(w) {

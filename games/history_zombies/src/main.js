@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {
+  BOSS_KILLS,
   MAX_ALIVE,
+  PLAYER_HP,
   PLAYER_RADIUS,
   PLAYER_SPEED,
   WAVE_PAUSE,
@@ -24,7 +26,7 @@ import {
   updateFx,
 } from './fx.js';
 import { buildWhiteHouse } from './maps/whiteHouse.js';
-import { animatePlayer, createPlayer, equipVisual } from './player.js';
+import { animatePlayer, createPlayer, equipVisual, setArmorVisual } from './player.js';
 import { createWorld, updateCamera } from './scene.js';
 import {
   bindHud,
@@ -54,14 +56,11 @@ import {
 import { hurtZombie, spawnZombie, updateZombies } from './zombies.js';
 
 // ---------------------------------------------------------------- setup
-const qs = new URLSearchParams(location.search);
-const AUTO = qs.has('auto');
 const host = document.getElementById('canvas-host');
 const world = createWorld(host);
 const hud = bindHud();
 initFx(world, hud.layer, hud.flash);
 const map = buildWhiteHouse(world.scene);
-if (qs.has('reset')) resetSave();
 const save = loadSave();
 const player = createPlayer(world.entities, map.playerStart);
 player.yaw = Math.PI;
@@ -98,6 +97,7 @@ let saveTimer = 0;
 let hintShown = false;
 
 const keys = new Set();
+let camSpin = 0;
 const mouse = { x: 0, y: 0, down: false };
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -112,8 +112,20 @@ function level(id = save.current) {
   return save.owned[id] ?? 0;
 }
 
+function applyArmor() {
+  const lvl = save.armor || 0;
+  const prevMax = player.hpMax;
+  player.hpMax = PLAYER_HP + lvl * 10;
+  player.hp = Math.min(player.hpMax, player.hp + (player.hpMax - prevMax));
+  setArmorVisual(player, lvl);
+}
+
 function equipCurrent() {
   equipVisual(player, save.current, level());
+  if ((save.armor || 0) !== player.armorLevel) {
+    player.armorLevel = save.armor || 0;
+    applyArmor();
+  }
 }
 
 function syncUi() {
@@ -153,9 +165,12 @@ function toggleShop(force) {
 
 // ---------------------------------------------------------------- combat plumbing
 const bossBusy = () => !!boss && boss.state !== 'sleep';
+let targetCache = null;
 const targets = () => {
+  if (targetCache) return targetCache;
   const list = zombies.filter((z) => z.alive);
   if (boss && boss.alive) list.push(boss);
+  targetCache = list;
   return list;
 };
 
@@ -181,6 +196,10 @@ function hit(tg, dmg, from, knock, opts = {}) {
     dust(p, 4);
     save.coins += tg.coins;
     save.kills += 1;
+    if (boss && boss.state === 'sleep' && save.kills === BOSS_KILLS) {
+      showBanner(hud, '35 bonks! Something is snoring...', 3000);
+      showToast(hud, 'Follow the arrow to the sleepy zombie behind the mansion!', 6000);
+    }
     floatText({ x: p.x, y: 0.4, z: p.z }, `+${tg.coins}`, '#ffd24a');
   }
 }
@@ -189,13 +208,15 @@ const atkCtx = { targets, hit, fxGroup: world.fxGroup, projectiles };
 
 function bonkPlayer(dmg) {
   if (player.invuln > 0 || mode !== 'play') return;
-  player.hp = Math.max(0, player.hp - dmg);
+  const reduced = Math.max(1, Math.round(dmg * (1 - 0.1 * (save.armor || 0))));
+  player.hp = Math.max(0, player.hp - reduced);
   player.invuln = 0.8;
   addShake(0.25);
   flash('#ffffff', 140);
   floatText(player.mesh.position, 'Oof!', '#ffb3c6');
   if (player.hp <= 0) {
     mode = 'over';
+    save.coins = 0;
     writeSave(save);
     setOverlay(hud.over, true);
   }
@@ -233,10 +254,6 @@ function startWave() {
   waveActive = true;
   spawnTimer = 0;
   showBanner(hud, `Wave ${wave}`);
-  if (wave === 2 && boss && !hintShown) {
-    hintShown = true;
-    showToast(hud, 'Zzz... something is snoring behind the mansion. Follow the arrow!', 5000);
-  }
 }
 
 function spawnOne() {
@@ -286,7 +303,9 @@ function updateWaves(dt) {
 const bossEnv = {
   player: player.mesh.position,
   map,
-  wake: () => startIntro(),
+  wake: () => {
+    if (save.kills >= BOSS_KILLS) startIntro();
+  },
   bonk: (dmg) => bonkPlayer(dmg),
   throwPie: (from, to) => pies.push(makePie(world.fxGroup, from, to)),
   summon: (center) => {
@@ -380,6 +399,8 @@ function finishCure() {
 
 // ---------------------------------------------------------------- input
 window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyQ') camSpin = -1;
+  if (e.code === 'KeyE') camSpin = 1;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   keys.add(e.code);
   if (mode !== 'play') return;
@@ -390,7 +411,32 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') toggleShop();
   if (e.code === 'Escape') toggleShop(false);
 });
-window.addEventListener('keyup', (e) => keys.delete(e.code));
+window.addEventListener('keyup', (e) => {
+  keys.delete(e.code);
+  if (e.code === 'KeyQ' && camSpin < 0) camSpin = 0;
+  if (e.code === 'KeyE' && camSpin > 0) camSpin = 0;
+});
+host.addEventListener('contextmenu', (e) => e.preventDefault());
+host.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  world.cam.userZoom = Math.max(0.55, Math.min(1.7, world.cam.userZoom * (1 + Math.sign(e.deltaY) * 0.08)));
+}, { passive: false });
+let dragging = false;
+let dragX = 0;
+window.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  world.cam.yaw -= (e.clientX - dragX) * 0.008;
+  dragX = e.clientX;
+});
+host.addEventListener('pointerdown', (e) => {
+  if (e.button === 2) {
+    dragging = true;
+    dragX = e.clientX;
+  }
+});
+window.addEventListener('pointerup', (e) => {
+  if (e.button === 2) dragging = false;
+});
 host.addEventListener('pointermove', (e) => {
   mouse.x = e.clientX;
   mouse.y = e.clientY;
@@ -442,48 +488,25 @@ function updateAim() {
   }
 }
 
-/** Test-only autopilot (?auto): chases tonic, George, or the nearest foe and swings. */
-function autopilot() {
-  const p = player.mesh.position;
-  let goal = null;
-  let stop = 1.8;
-  if (tonic) goal = tonic;
-  else if (boss && boss.state === 'weak' && boss.hasTonic) goal = boss.mesh.position;
-  else {
-    let best = 1e9;
-    for (const tg of targets()) {
-      const d = Math.hypot(tg.mesh.position.x - p.x, tg.mesh.position.z - p.z);
-      if (d < best) {
-        best = d;
-        goal = tg.mesh.position;
-      }
-    }
-    stop = 2.2;
-    if (goal) {
-      player.yaw = Math.atan2(goal.x - p.x, goal.z - p.z);
-      player.mesh.rotation.y = player.yaw;
-      mouse.down = true;
-    }
-  }
-  if (!goal) return { x: 0, z: 0 };
-  const dx = goal.x - p.x;
-  const dz = goal.z - p.z;
-  const d = Math.hypot(dx, dz);
-  return d > stop ? { x: dx, z: dz } : { x: 0, z: 0 };
-}
-
 function updatePlayer(dt) {
   player.attackCd = Math.max(0, player.attackCd - dt);
   player.invuln = Math.max(0, player.invuln - dt);
-  if (!AUTO) updateAim();
+  updateAim();
 
   let x = 0;
   let z = 0;
-  if (AUTO) ({ x, z } = autopilot());
   if (keys.has('KeyW') || keys.has('ArrowUp')) z -= 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) z += 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
+  {
+    const c = Math.cos(world.cam.yaw);
+    const sn = Math.sin(world.cam.yaw);
+    const rx = x * c + z * sn;
+    const rz = -x * sn + z * c;
+    x = rx;
+    z = rz;
+  }
   const len = Math.hypot(x, z);
   const p = player.mesh.position;
   const inGoo = puddles.some((pd) => Math.hypot(pd.x - p.x, pd.z - p.z) < pd.r);
@@ -502,6 +525,7 @@ function updatePlayer(dt) {
 }
 
 function updateGame(dt) {
+  targetCache = null;
   updatePlayer(dt);
 
   updateZombies(zombies, player.mesh.position, dt, t, map, zombieCb);
@@ -563,6 +587,7 @@ function updateGame(dt) {
 }
 
 function updateCine(dt) {
+  targetCache = null;
   cine.t += dt;
   player.attackCd = 0;
   player.moving *= 0.8;
@@ -592,7 +617,7 @@ const projV = new THREE.Vector3();
 function updateCompass() {
   let target = null;
   if (mode === 'play' && !cine) {
-    if (boss && boss.state === 'sleep' && wave >= 2) target = boss.mesh.position;
+    if (boss && boss.state === 'sleep' && save.kills >= BOSS_KILLS) target = boss.mesh.position;
     else if (boss && boss.state === 'weak') target = tonic ? { x: tonic.x, z: tonic.z } : boss.mesh.position;
   }
   if (!target) {
@@ -624,7 +649,6 @@ function updateCompass() {
 }
 
 // ---------------------------------------------------------------- main loop
-const DEBUG = qs.has('debug') || qs.has('boss') || qs.has('auto');
 let last = performance.now();
 function frame(ms) {
   requestAnimationFrame(frame);
@@ -636,6 +660,7 @@ function frame(ms) {
     dt = real * 0.06;
   }
   updateFx(real);
+  world.cam.yaw += camSpin * real * 1.8;
   t += dt;
 
   if (mode === 'play' && !shopOpen) {
@@ -652,10 +677,6 @@ function frame(ms) {
 
   refreshHud(hud, save, player, wave, !!ally);
   updateCompass();
-  if (DEBUG) {
-    const p = player.mesh.position;
-    document.title = `${mode} ${cine ? cine.kind + cine.t.toFixed(1) : '-'} p(${p.x.toFixed(1)},${p.z.toFixed(1)}) f(${world.cam.focus.x.toFixed(1)},${world.cam.focus.z.toFixed(1)}) z${world.cam.zoom.toFixed(2)} boss:${boss ? boss.state : '-'} n${zombies.length}`;
-  }
   world.renderer.render(world.scene, world.camera);
 }
 
@@ -666,19 +687,3 @@ world.cam.focus.set(player.mesh.position.x, 0, player.mesh.position.z);
 requestAnimationFrame(frame);
 console.info('[History Zombies] ready');
 
-// Handy test links: ?boss jumps next to George, ?boss=weak also makes him nearly cured.
-if (qs.has('auto')) {
-  mode = 'play';
-  setOverlay(hud.menu, false);
-}
-if (qs.has('boss') && boss) {
-  player.mesh.position.set(map.bossSpawn.x + 10, 0, map.bossSpawn.z);
-  world.cam.focus.set(player.mesh.position.x, 0, player.mesh.position.z);
-  if (qs.get('boss') === 'weak') boss.hp = 8;
-  save.coins = Math.max(save.coins, 500);
-  mode = 'play';
-  setOverlay(hud.menu, false);
-}
-
-// Debug hook for testing.
-window.__hz = { save, player, world, get boss() { return boss; }, get zombies() { return zombies; }, get wave() { return wave; } };

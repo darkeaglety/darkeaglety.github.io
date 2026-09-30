@@ -1,4 +1,4 @@
-import { MAX_LEVEL, SAVE_KEY, WEAPONS } from './constants.js';
+import { MAX_ARMOR, MAX_LEVEL, SAVE_KEY, WEAPONS } from './constants.js';
 
 /**
  * @typedef {{
@@ -12,7 +12,7 @@ import { MAX_LEVEL, SAVE_KEY, WEAPONS } from './constants.js';
 
 /** @returns {Save} */
 function fresh() {
-  return { coins: 0, owned: { foam: 0 }, current: 'foam', roster: {}, kills: 0 };
+  return { coins: 0, owned: { foam: 0 }, current: 'foam', roster: {}, kills: 0, armor: 0 };
 }
 
 /** @returns {Save} */
@@ -84,6 +84,21 @@ export function upgradeWeapon(s, id) {
 export function equip(s, id) {
   if (!owns(s, id)) return false;
   s.current = id;
+  writeSave(s);
+  return true;
+}
+
+/** @param {Save} s */
+export const armorCost = (s) => 50 * ((s.armor || 0) + 1);
+
+/** @param {Save} s */
+export function buyArmor(s) {
+  const lvl = s.armor || 0;
+  if (lvl >= MAX_ARMOR) return false;
+  const c = armorCost(s);
+  if (s.coins < c) return false;
+  s.coins -= c;
+  s.armor = lvl + 1;
   writeSave(s);
   return true;
 }
