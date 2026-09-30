@@ -538,7 +538,6 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyB') toggleShop();
   if (e.code === 'KeyC') toggleCatalog();
-  if (e.code === 'KeyR') location.reload();
   if (e.code === 'Escape') {
     toggleShop(false);
     toggleCatalog(false);
@@ -598,7 +597,11 @@ hud.btnReset.addEventListener('click', () => {
 hud.btnShopClose.addEventListener('click', () => toggleShop(false));
 hud.btnCatalogClose.addEventListener('click', () => toggleCatalog(false));
 hud.btnRetry.addEventListener('click', () => location.reload());
-document.getElementById('btn-restart').addEventListener('click', () => location.reload());
+document.getElementById('btn-restart').addEventListener('click', () => {
+  if (!confirm('Restart everything? This erases your coins, gear, armor, bonks, catalog and teammates.')) return;
+  resetSave();
+  location.reload();
+});
 hud.btnKeep.addEventListener('click', () => {
   mode = 'play';
   setOverlay(hud.win, false);
