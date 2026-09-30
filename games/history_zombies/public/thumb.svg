@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8fd3ff"/>
+      <stop offset="100%" stop-color="#d9f2ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="200" fill="url(#sky)"/>
+  <rect y="140" width="600" height="60" fill="#7fd06b"/>
+  <rect x="180" y="82" width="240" height="60" fill="#f7f3e8" stroke="#23305e" stroke-width="3"/>
+  <rect x="150" y="104" width="40" height="38" fill="#f7f3e8" stroke="#23305e" stroke-width="3"/>
+  <rect x="410" y="104" width="40" height="38" fill="#f7f3e8" stroke="#23305e" stroke-width="3"/>
+  <polygon points="255,82 300,52 345,82" fill="#f7f3e8" stroke="#23305e" stroke-width="3"/>
+  <g fill="#fff" stroke="#23305e" stroke-width="2">
+    <rect x="262" y="84" width="8" height="56"/><rect x="282" y="84" width="8" height="56"/>
+    <rect x="310" y="84" width="8" height="56"/><rect x="330" y="84" width="8" height="56"/>
+  </g>
+  <circle cx="90" cy="140" r="26" fill="#9be08a" stroke="#23305e" stroke-width="3"/>
+  <circle cx="80" cy="133" r="7" fill="#fff" stroke="#23305e" stroke-width="2"/><circle cx="82" cy="134" r="3" fill="#111"/>
+  <circle cx="100" cy="133" r="7" fill="#fff" stroke="#23305e" stroke-width="2"/><circle cx="102" cy="134" r="3" fill="#111"/>
+  <circle cx="510" cy="142" r="30" fill="#9be08a" stroke="#23305e" stroke-width="3"/>
+  <circle cx="480" cy="128" r="14" fill="#fafaf2" stroke="#23305e" stroke-width="2"/>
+  <circle cx="540" cy="128" r="14" fill="#fafaf2" stroke="#23305e" stroke-width="2"/>
+  <polygon points="490,108 510,96 530,108" fill="#1d2340" stroke="#ffd24a" stroke-width="2"/>
+  <circle cx="500" cy="138" r="8" fill="#fff" stroke="#23305e" stroke-width="2"/><circle cx="502" cy="139" r="3" fill="#111"/>
+  <circle cx="522" cy="138" r="8" fill="#fff" stroke="#23305e" stroke-width="2"/><circle cx="524" cy="139" r="3" fill="#111"/>
+  <text x="300" y="34" text-anchor="middle" fill="#23305e" stroke="#fff" stroke-width="4" paint-order="stroke" font-family="Trebuchet MS, sans-serif" font-size="34" font-weight="bold">HISTORY ZOMBIES</text>
+  <text x="300" y="186" text-anchor="middle" fill="#23305e" font-family="Trebuchet MS, sans-serif" font-size="15" font-weight="bold">MISSION 1: THE WHITE HOUSE</text>
+</svg>
