@@ -55,6 +55,11 @@ export function spawnZombie(group, typeId, pos) {
     spawnT: 0,
     base: type.scale,
     coins: type.coins,
+    behavior: type.behavior || '',
+    woke: type.behavior !== 'sleepy',
+    hopT: Math.random() * 1.6,
+    throwCd: 3 + Math.random() * 2,
+    zzzT: Math.random() * 2,
   };
 }
 
@@ -66,6 +71,7 @@ export function hurtZombie(z, dmg, from, knock, stun = 0) {
   if (!z.alive) return false;
   z.hp -= dmg;
   z.hitT = 1;
+  z.woke = true;
   const dx = z.mesh.position.x - from.x;
   const dz = z.mesh.position.z - from.z;
   const d = Math.hypot(dx, dz) || 1;
@@ -109,7 +115,7 @@ export function updateZombies(zombies, target, dt, t, map, cb) {
       const p = Math.min(1, z.dying / DIE_TIME);
       m.rotation.y += 14 * dt;
       m.scale.setScalar(z.base * (1 + 0.35 * Math.sin(p * Math.PI)) * (1 - p * p));
-      m.position.y = Math.sin(p * Math.PI) * 1.2;
+      m.position.y = (z.behavior === 'float' ? 1.4 : 0) + Math.sin(p * Math.PI) * 1.2;
       if (p >= 1) {
         z.gone = true;
         m.parent?.remove(m);
@@ -137,8 +143,55 @@ export function updateZombies(zombies, target, dt, t, map, cb) {
     const reach = z.radius + 0.6 + 0.45;
     const slow = z.stun > 0 ? 0.2 : 1;
     let moveAmt = 0;
-    if (dist > reach * 0.8) {
-      const sp = z.type.speed * slow;
+
+    // Sleepyhead snoozes until you get close.
+    if (!z.woke) {
+      if (dist < 7) {
+        z.woke = true;
+        cb.wake?.(z);
+      } else {
+        z.zzzT -= dt;
+        if (z.zzzT <= 0) {
+          z.zzzT = 2.2;
+          cb.zzz?.(z);
+        }
+        animateWalk(z.ch, t + z.phase, 0);
+        z.ch.rig.rotation.x = 0.28;
+        z.ch.head.rotation.z = 0.3;
+        m.scale.set(z.base * (1 + 0.22 * z.hitT), z.base * (1 - 0.25 * z.hitT), z.base * (1 + 0.22 * z.hitT));
+        z.hitT = Math.max(0, z.hitT - dt * 5);
+        continue;
+      }
+    }
+    z.ch.rig.rotation.x = 0;
+
+    let speedMul = 1;
+    let holdBack = false;
+    if (z.behavior === 'hop') {
+      z.hopT += dt;
+      const cyc = z.hopT % 1.7;
+      if (cyc < 0.6) {
+        speedMul = 3.0;
+        m.position.y = Math.sin((cyc / 0.6) * Math.PI) * 1.4;
+      } else {
+        speedMul = 0.1;
+        m.position.y = 0;
+      }
+    } else if (z.behavior === 'float') {
+      m.position.y = 1.4 + Math.sin(t * 2 + z.phase) * 0.25;
+      z.ch.disc.position.y = -m.position.y / z.base + 0.03;
+    } else if (z.behavior === 'thrower') {
+      z.throwCd -= dt;
+      if (dist < 9) holdBack = true;
+      if (z.throwCd <= 0 && dist < 15 && z.stun <= 0) {
+        z.throwCd = 4.5;
+        z.lunge = 1;
+        cb.throwGoo?.(z);
+      }
+    }
+
+    if (!holdBack && dist > reach * 0.8) {
+      const sp = z.type.speed * slow * speedMul;
       m.position.x += (dx / dist) * sp * dt;
       m.position.z += (dz / dist) * sp * dt;
       moveAmt = slow === 1 ? 1 : 0.3;

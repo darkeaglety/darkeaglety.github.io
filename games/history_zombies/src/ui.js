@@ -1,4 +1,4 @@
-import { BOSS_KILLS, MAX_ARMOR, MAX_LEVEL, WEAPONS } from './constants.js';
+import { ABE_KILLS, BOSS_KILLS, MAX_ARMOR, MAX_LEVEL, SPECIAL_ZOMBIES, WEAPONS, ZOMBIE_TYPES } from './constants.js';
 import { armorCost, buyArmor, equip, buyWeapon, upgradeCost, upgradeWeapon, owns } from './economy.js';
 
 const $ = (id) => document.getElementById(id);
@@ -31,6 +31,10 @@ export function bindHud() {
     shop: $('shop-overlay'),
     shopGrid: $('shop-grid'),
     shopCoins: $('shop-coins'),
+    catalog: $('catalog-overlay'),
+    catGrid: $('cat-grid'),
+    catCount: $('cat-count'),
+    btnCatalogClose: $('btn-catalog-close'),
     over: $('over-overlay'),
     win: $('win-overlay'),
     btnStart: $('btn-start'),
@@ -100,6 +104,12 @@ export function renderHotbar(hud, save, onPick) {
     d.addEventListener('click', () => onPick(i));
     hud.hotbar.appendChild(d);
   });
+  const cat = document.createElement('button');
+  cat.type = 'button';
+  cat.className = 'big green';
+  cat.textContent = 'Catalog (C)';
+  cat.addEventListener('click', () => onPick(-2));
+  hud.hotbar.appendChild(cat);
   const shop = document.createElement('button');
   shop.type = 'button';
   shop.id = 'btn-shop';
@@ -182,5 +192,43 @@ export function renderShop(hud, save, changed) {
     }
     el.appendChild(row);
     hud.shopGrid.appendChild(el);
+  }
+}
+
+const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
+const speedLabel = (v) => (v < 2.3 ? 'Slow' : v < 3.6 ? 'Medium' : v < 5 ? 'Fast' : 'Zoomy');
+const bonkLabel = (v) => (v < 5 ? 'Tiny bonk' : v < 8 ? 'Small bonk' : v < 11 ? 'Medium bonk' : 'Big bonk');
+
+/** @param {any} hud @param {any} save */
+export function renderCatalog(hud, save) {
+  const seen = save.seen || {};
+  const all = [...Object.values(ZOMBIE_TYPES), ...SPECIAL_ZOMBIES];
+  const found = all.filter((z) => seen[z.id]).length;
+  hud.catCount.textContent = `Discovered ${found} of ${all.length} zombies`;
+  hud.catGrid.innerHTML = '';
+  for (const z of Object.values(ZOMBIE_TYPES)) {
+    const el = document.createElement('div');
+    if (!seen[z.id]) {
+      el.className = 'zc unseen';
+      el.innerHTML = `<div class="face" style="background:#cfd6e8">?</div><div><h4>???</h4><p>You haven't met this zombie yet. It starts showing up around wave ${z.wave}.</p></div>`;
+    } else {
+      el.className = 'zc';
+      el.innerHTML = `<div class="face" style="background:${hex(z.skin)}">${z.icon}</div><div><h4>${z.name}</h4>
+        <div class="stats"><span>HP ${z.hp}</span><span>${speedLabel(z.speed)}</span><span>${bonkLabel(z.damage)}</span><span>+${z.coins} coins</span></div>
+        <p>${z.desc}</p><p class="tip">Tip: ${z.tip}</p></div>`;
+    }
+    hud.catGrid.appendChild(el);
+  }
+  for (const z of SPECIAL_ZOMBIES) {
+    const el = document.createElement('div');
+    if (!seen[z.id]) {
+      el.className = 'zc unseen boss';
+      el.innerHTML = `<div class="face" style="background:#cfd6e8">?</div><div><h4>??? (Boss)</h4><p>${z.hint}</p></div>`;
+    } else {
+      el.className = 'zc boss';
+      el.innerHTML = `<div class="face" style="background:#a6dc8a">${z.icon}</div><div><h4>${z.name}</h4>
+        <div class="stats"><span>Boss</span><span>HP ${z.hp}</span></div><p>${z.desc}</p><p class="tip">Tip: ${z.tip}</p></div>`;
+    }
+    hud.catGrid.appendChild(el);
   }
 }

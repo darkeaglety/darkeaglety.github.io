@@ -124,6 +124,7 @@ export function buildCharacter(o) {
     legL,
     legR,
     pupils,
+    disc,
     skinMat,
     gait: o.gait || 6,
     zombie: !!o.zombie,
@@ -131,9 +132,89 @@ export function buildCharacter(o) {
   };
 }
 
+/** Abe's tall hat, reusable so it can be thrown. */
+export function makeStovepipe() {
+  const g = new THREE.Group();
+  g.name = 'stovepipe';
+  const black = std(0x15151b, { roughness: 0.4 });
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.38, 1.0, 16), black);
+  tube.position.y = 0.55;
+  tube.castShadow = true;
+  g.add(tube);
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.07, 20), black);
+  brim.position.y = 0.05;
+  g.add(brim);
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.39, 0.16, 16), std(0x8a2b3a));
+  band.position.y = 0.2;
+  g.add(band);
+  g.position.y = 0.4;
+  return g;
+}
+
 /** @param {THREE.Group} head @param {string} kind */
 function addHat(head, kind) {
-  if (kind === 'cone') {
+  if (kind === 'stovepipe') {
+    head.add(makeStovepipe());
+  } else if (kind === 'beard') {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.4, 0.22), std(0x1b1b1b, { roughness: 1 }));
+    b.position.set(0, -0.34, 0.28);
+    head.add(b);
+  } else if (kind === 'chefhat') {
+    const w = std(0xffffff, { roughness: 0.8 });
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.25, 14), w);
+    band.position.y = 0.48;
+    head.add(band);
+    for (const [x, z] of [[0, 0], [0.22, 0.05], [-0.22, 0.05], [0, -0.2]]) {
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), w);
+      puff.position.set(x, 0.85, z);
+      head.add(puff);
+    }
+  } else if (kind === 'strawhat') {
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.04, 20), std(0xd9b45a));
+    brim.position.y = 0.36;
+    head.add(brim);
+    const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.3, 14), std(0xd9b45a));
+    dome.position.y = 0.52;
+    head.add(dome);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.07, 14), std(0x3b8f3b));
+    band.position.y = 0.42;
+    head.add(band);
+  } else if (kind === 'headband') {
+    const hb = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.06, 6, 20), std(0xff2d55));
+    hb.rotation.x = Math.PI / 2;
+    hb.position.y = 0.2;
+    head.add(hb);
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), std(0xff2d55));
+    knot.position.set(0, 0.2, -0.46);
+    head.add(knot);
+  } else if (kind === 'balloon') {
+    const string = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 1.1, 4), std(0xffffff));
+    string.position.y = 0.95;
+    head.add(string);
+    const balloon = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 12), std(0xff5e8a, { roughness: 0.15, emissive: 0x551122 }));
+    balloon.scale.y = 1.2;
+    balloon.position.y = 1.9;
+    head.add(balloon);
+  } else if (kind === 'cap') {
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.46, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), std(0x2f7bff));
+    dome.position.y = 0.1;
+    head.add(dome);
+    const peak = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.4), std(0x1f55c0));
+    peak.position.set(0, 0.17, 0.5);
+    head.add(peak);
+  } else if (kind === 'nightcap') {
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.9, 12), std(0x9575cd));
+    cap.position.set(0, 0.6, -0.1);
+    cap.rotation.x = -0.35;
+    head.add(cap);
+    const pom = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), std(0xffffff));
+    pom.position.set(0, 0.95, -0.42);
+    head.add(pom);
+  } else if (kind === 'shades') {
+    const sh = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.14, 0.1), std(0x000000, { roughness: 0.2 }));
+    sh.position.set(0, 0.08, 0.4);
+    head.add(sh);
+  } else if (kind === 'cone') {
     const cone = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.75, 14), std(0xff7a1a));
     cone.position.y = 0.72;
     cone.castShadow = true;
@@ -204,7 +285,15 @@ function addHat(head, kind) {
 
 /** @param {THREE.Group} body @param {string} kind */
 function addExtra(body, kind) {
-  if (kind === 'camera') {
+  if (kind === 'mic') {
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 6), std(0x222222));
+    stick.position.set(-0.3, 0.1, 0.45);
+    stick.rotation.z = 0.3;
+    body.add(stick);
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), std(0xff4f6d, { emissive: 0x551122 }));
+    ball.position.set(-0.36, 0.34, 0.45);
+    body.add(ball);
+  } else if (kind === 'camera') {
     const cam = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.24, 0.2), std(0x222222));
     cam.position.set(0, -0.05, 0.42);
     body.add(cam);

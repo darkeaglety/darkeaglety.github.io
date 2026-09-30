@@ -12,7 +12,7 @@ import { MAX_ARMOR, MAX_LEVEL, SAVE_KEY, WEAPONS } from './constants.js';
 
 /** @returns {Save} */
 function fresh() {
-  return { coins: 0, owned: { foam: 0 }, current: 'foam', roster: {}, kills: 0, armor: 0 };
+  return { coins: 0, owned: { foam: 0 }, current: 'foam', roster: {}, kills: 0, armor: 0, seen: {} };
 }
 
 /** @returns {Save} */
@@ -21,6 +21,7 @@ export function loadSave() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return fresh();
     const s = { ...fresh(), ...JSON.parse(raw) };
+    if (!s.seen) s.seen = {};
     if (!s.owned || typeof s.owned.foam !== 'number') s.owned = { foam: 0, ...(s.owned || {}) };
     return s;
   } catch {

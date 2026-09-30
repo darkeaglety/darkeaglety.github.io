@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {
+  ABE_KILLS,
   BOSS_KILLS,
   MAX_ALIVE,
   PLAYER_HP,
@@ -8,6 +9,7 @@ import {
   WAVE_PAUSE,
   WAVE_SPAWN_GAP,
   WEAPONS,
+  ZOMBIE_TYPES,
   waveList,
 } from './constants.js';
 import { pushOut } from './collision.js';
@@ -31,6 +33,7 @@ import { createWorld, updateCamera } from './scene.js';
 import {
   bindHud,
   refreshHud,
+  renderCatalog,
   renderHotbar,
   renderShop,
   setBoss,
@@ -54,6 +57,7 @@ import {
   updateTonic,
 } from './washington.js';
 import { hurtZombie, spawnZombie, updateZombies } from './zombies.js';
+import { createAbe, makeHat, updateAbe, updateHats } from './lincoln.js';
 
 // ---------------------------------------------------------------- setup
 const host = document.getElementById('canvas-host');
@@ -86,6 +90,10 @@ if (save.roster.george) {
 
 let mode = 'menu'; // menu | play | over | win
 let shopOpen = false;
+let catalogOpen = false;
+/** @type {any} */
+let abe = null;
+const hats = [];
 let cine = null;
 let t = 0;
 let wave = 0;
@@ -138,6 +146,7 @@ function syncUi() {
 
 function onHotbar(i) {
   if (i === -1) return toggleShop();
+  if (i === -2) return toggleCatalog();
   selectSlot(i);
 }
 
@@ -153,8 +162,22 @@ function selectSlot(i) {
   syncUi();
 }
 
+function toggleCatalog(force) {
+  if (mode !== 'play' || cine || shopOpen) return;
+  catalogOpen = force !== undefined ? force : !catalogOpen;
+  setOverlay(hud.catalog, catalogOpen);
+  if (catalogOpen) renderCatalog(hud, save);
+}
+
+function markSeen(id, name) {
+  if (save.seen[id]) return;
+  save.seen[id] = true;
+  writeSave(save);
+  showToast(hud, `New zombie in the Catalog: ${name}! (press C)`, 3500);
+}
+
 function toggleShop(force) {
-  if (mode !== 'play' || cine) return;
+  if (mode !== 'play' || cine || catalogOpen) return;
   shopOpen = force !== undefined ? force : !shopOpen;
   setOverlay(hud.shop, shopOpen);
   if (shopOpen) renderShop(hud, save, () => {
@@ -164,12 +187,14 @@ function toggleShop(force) {
 }
 
 // ---------------------------------------------------------------- combat plumbing
-const bossBusy = () => !!boss && boss.state !== 'sleep';
+const georgeBusy = () => !!boss && boss.state !== 'sleep';
+const bossBusy = () => georgeBusy() || !!abe;
 let targetCache = null;
 const targets = () => {
   if (targetCache) return targetCache;
   const list = zombies.filter((z) => z.alive);
   if (boss && boss.alive) list.push(boss);
+  if (abe && abe.alive) list.push(abe);
   targetCache = list;
   return list;
 };
@@ -183,7 +208,10 @@ function hit(tg, dmg, from, knock, opts = {}) {
     floatText(p, pick(WORDS), pick(WORD_COLORS));
     addShake(0.12);
     hitStop(40);
-    if (weak) bossWeakened();
+    if (weak) {
+      if (tg === abe) abeDefeated();
+      else bossWeakened();
+    }
     return;
   }
   const killed = hurtZombie(tg, dmg, from, knock, opts.stun || 0);
@@ -223,6 +251,20 @@ function bonkPlayer(dmg) {
 }
 
 const zombieCb = {
+  zzz(z) {
+    if (Math.hypot(z.mesh.position.x - player.mesh.position.x, z.mesh.position.z - player.mesh.position.z) < 26) {
+      floatText(z.mesh.position, 'Zzz...', '#ffffff');
+    }
+  },
+  wake(z) {
+    floatText(z.mesh.position, 'Huh?!', '#ffe066');
+    addShake(0.05);
+  },
+  throwGoo(z) {
+    const from = z.mesh.position.clone();
+    from.y = 2.6;
+    pies.push(makePie(world.fxGroup, from, player.mesh.position));
+  },
   bonk(z) {
     starPop(player.mesh.position, 3);
     bonkPlayer(z.type.damage);
@@ -270,6 +312,7 @@ function spawnOne() {
   if (!pos) pos = { x: map.spawnPoints[0].x, z: map.spawnPoints[0].z };
   pushOut(pos, 0.8, map.obstacles, map.bounds);
   zombies.push(spawnZombie(world.entities, id, pos));
+  markSeen(id, ZOMBIE_TYPES[id].name);
   dust(new THREE.Vector3(pos.x, 0, pos.z), 4);
 }
 
@@ -304,7 +347,7 @@ const bossEnv = {
   player: player.mesh.position,
   map,
   wake: () => {
-    if (save.kills >= BOSS_KILLS) startIntro();
+    if (save.kills >= BOSS_KILLS && !abe) startIntro();
   },
   bonk: (dmg) => bonkPlayer(dmg),
   throwPie: (from, to) => pies.push(makePie(world.fxGroup, from, to)),
@@ -330,6 +373,7 @@ const bossEnv = {
 
 function startIntro() {
   if (!boss || boss.state !== 'sleep') return;
+  markSeen('george', 'Zombie George Washington');
   boss.state = 'intro';
   boss.stateT = 0;
   spawnQueue = [];
@@ -397,6 +441,89 @@ function finishCure() {
   setOverlay(hud.win, true);
 }
 
+
+// ---------------------------------------------------------------- Abe Lincoln
+const abeEnv = {
+  player: player.mesh.position,
+  map,
+  summon: (center) => {
+    showBanner(hud, 'Abe calls for backup!', 1200);
+    for (let i = 0; i < 2; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const pos = { x: center.x + Math.cos(a) * 5, z: center.z + Math.sin(a) * 5 };
+      pushOut(pos, 0.8, map.obstacles, map.bounds);
+      zombies.push(spawnZombie(world.entities, 'agent', pos));
+      confetti(new THREE.Vector3(pos.x, 0, pos.z), 6, 4);
+    }
+    markSeen('agent', ZOMBIE_TYPES.agent.name);
+  },
+  throwHat: (a, spread, primary) => {
+    hats.push(makeHat(world.fxGroup, a, player.mesh.position, spread, primary));
+    if (primary) floatText(a.mesh.position, 'HAT TOSS!', '#ffe066');
+  },
+};
+
+const hatEnv = {
+  player: player.mesh.position,
+  bonk: (dmg) => bonkPlayer(dmg),
+  sparkle: (p) => starPop(p, 5),
+};
+
+function startAbe() {
+  let best = map.spawnPoints[0];
+  let bd = -1;
+  for (const sp of map.spawnPoints) {
+    const d = Math.hypot(sp.x - player.mesh.position.x, sp.z - player.mesh.position.z);
+    if (d > bd && d < 40) {
+      bd = d;
+      best = sp;
+    }
+  }
+  const pos = { x: best.x * 0.7, z: best.z * 0.7 };
+  pushOut(pos, 1.5, map.obstacles, map.bounds);
+  abe = createAbe(world.entities, pos);
+  markSeen('abe', 'Zombie Abe Lincoln');
+  spawnQueue = [];
+  waveActive = false;
+  pauseTimer = 3;
+  clearZombies();
+  cine = { kind: 'abe', t: 0, dur: 3.6 };
+  world.cam.zoomTarget = 0.5;
+  showTitleCard(hud, 'ZOMBIE ABE LINCOLN', 'Four score and seven bonks ago...', true);
+  flash('#ffe9a8', 300);
+  addShake(0.4);
+}
+
+function endAbeIntro() {
+  cine = null;
+  abe.state = 'fight';
+  abe.stateT = 0;
+  abe.alive = true;
+  world.cam.zoomTarget = 1;
+  showTitleCard(hud, '', '', false);
+  showBanner(hud, 'Dodge the flying hat!', 2400);
+}
+
+function abeDefeated() {
+  abe.alive = false;
+  abe.state = 'leaving';
+  abe.stateT = 0;
+  clearZombies();
+  for (const h of hats) h.mesh.parent?.remove(h.mesh);
+  hats.length = 0;
+  setBoss(hud, false);
+  flash('#ffffff', 300);
+  addShake(0.4);
+  confetti(abe.mesh.position, 60, 9);
+  ring(abe.mesh.position, 9, 0xffd24a, 0.8);
+  save.coins += 250;
+  save.roster.abe = true;
+  writeSave(save);
+  showBanner(hud, 'Abe Lincoln is cured!', 2600);
+  showToast(hud, 'Abe tips his hat and heads home. +250 coins!', 5000);
+  pauseTimer = 4;
+}
+
 // ---------------------------------------------------------------- input
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ') camSpin = -1;
@@ -409,7 +536,11 @@ window.addEventListener('keydown', (e) => {
     if (n >= 0 && n < WEAPONS.length) selectSlot(n);
   }
   if (e.code === 'KeyB') toggleShop();
-  if (e.code === 'Escape') toggleShop(false);
+  if (e.code === 'KeyC') toggleCatalog();
+  if (e.code === 'Escape') {
+    toggleShop(false);
+    toggleCatalog(false);
+  }
 });
 window.addEventListener('keyup', (e) => {
   keys.delete(e.code);
@@ -463,6 +594,7 @@ hud.btnReset.addEventListener('click', () => {
   location.reload();
 });
 hud.btnShopClose.addEventListener('click', () => toggleShop(false));
+hud.btnCatalogClose.addEventListener('click', () => toggleCatalog(false));
 hud.btnRetry.addEventListener('click', () => location.reload());
 hud.btnKeep.addEventListener('click', () => {
   mode = 'play';
@@ -543,6 +675,16 @@ function updateGame(dt) {
     }
   }
 
+  if (abe) {
+    if (updateAbe(abe, dt, t, abeEnv)) {
+      abe = null;
+    } else if (abe.state === 'fight') {
+      setBoss(hud, true, abe.hp / abe.hpMax, 1 - abe.hp / abe.hpMax, 'Zombie Abe Lincoln');
+    }
+  }
+  updateHats(hats, dt, hatEnv);
+  if (!abe && !save.roster.abe && save.kills >= ABE_KILLS && !georgeBusy() && !cine) startAbe();
+
   const landed = updatePies(pies, dt, world.fxGroup, puddles);
   for (const l of landed) {
     ring({ x: l.x, z: l.z }, 3, 0x7f9bff, 0.4);
@@ -592,7 +734,14 @@ function updateCine(dt) {
   player.attackCd = 0;
   player.moving *= 0.8;
   animatePlayer(player, t, dt);
-  if (cine.kind === 'intro') {
+  if (cine.kind === 'abe') {
+    updateAbe(abe, dt, t, abeEnv);
+    if (Math.floor(cine.t * 3) !== Math.floor((cine.t - dt) * 3) && cine.t > 1.4) {
+      addShake(0.15);
+      starPop(abe.mesh.position, 3);
+    }
+    if (cine.t >= cine.dur) endAbeIntro();
+  } else if (cine.kind === 'intro') {
     updateBoss(boss, dt, t, bossEnv);
     if (Math.floor(cine.t * 3) !== Math.floor((cine.t - dt) * 3) && cine.t > 1.2) {
       addShake(0.2);
@@ -663,7 +812,7 @@ function frame(ms) {
   world.cam.yaw += camSpin * real * 1.8;
   t += dt;
 
-  if (mode === 'play' && !shopOpen) {
+  if (mode === 'play' && !shopOpen && !catalogOpen) {
     if (cine) updateCine(dt);
     else updateGame(dt);
   } else if (mode === 'menu') {
@@ -671,7 +820,8 @@ function frame(ms) {
   }
   map.update(player.mesh.position, real, t);
 
-  if (cine && boss) focus.set(boss.mesh.position.x, 0, boss.mesh.position.z);
+  const cineTarget = cine ? (cine.kind === 'abe' ? abe : boss) : null;
+  if (cineTarget) focus.set(cineTarget.mesh.position.x, 0, cineTarget.mesh.position.z);
   else focus.set(player.mesh.position.x, 0, player.mesh.position.z);
   updateCamera(world, focus, real, fx.shake, cine ? 3 : 5);
 
