@@ -39,6 +39,7 @@ export const DOUBLE_TAP_MS = 250;
 export const STEAL_COOLDOWN = 0.6;
 export const STEAL_LUNGE_TIME = 0.22;
 export const STEAL_CHANCE = 0.45;
+export const STEAL_RANGE = 95;
 export const BLOCK_CHANCE = 0.5;
 export const CROSSOVER_TIME = 0.4;
 export const CROSSOVER_COOLDOWN = 1.0;

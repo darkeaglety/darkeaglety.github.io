@@ -6,13 +6,38 @@ const KEY_MAPS = [
 ];
 
 export function attachKeyboard(states, { onPause, onToggleFps }) {
-  const lastUp = [0, 0];
   const held = new Set();
+  const lastTap = new Map();
+  let singlePlayer = false;
 
   const lookup = new Map();
   KEY_MAPS.forEach((map, idx) => {
     for (const [action, code] of Object.entries(map)) lookup.set(code, { idx, action });
   });
+
+  // In one-player mode both key sets drive player 1.
+  const target = (hit) => (singlePlayer ? 0 : hit.idx);
+
+  const refreshHeld = () => {
+    for (const s of states) s.left = s.right = s.down = false;
+    for (const code of held) {
+      const hit = lookup.get(code);
+      const s = states[target(hit)];
+      if (hit.action === 'left') s.left = true;
+      else if (hit.action === 'right') s.right = true;
+      else if (hit.action === 'down') s.down = true;
+    }
+  };
+
+  const isDoubleTap = (code) => {
+    const now = performance.now();
+    if (now - (lastTap.get(code) || 0) < DOUBLE_TAP_MS) {
+      lastTap.set(code, 0);
+      return true;
+    }
+    lastTap.set(code, now);
+    return false;
+  };
 
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape' || e.code === 'KeyP') {
@@ -28,47 +53,42 @@ export function attachKeyboard(states, { onPause, onToggleFps }) {
     e.preventDefault();
     if (e.repeat || held.has(e.code)) return;
     held.add(e.code);
+    refreshHeld();
 
-    const s = states[hit.idx];
+    const s = states[target(hit)];
     switch (hit.action) {
       case 'left':
-        s.left = true;
+        if (isDoubleTap(e.code)) s.stealDir = -1;
         break;
       case 'right':
-        s.right = true;
+        if (isDoubleTap(e.code)) s.stealDir = 1;
         break;
       case 'down':
-        s.down = true;
         s.downPressed = true;
         break;
-      case 'up': {
-        const now = performance.now();
-        if (now - lastUp[hit.idx] < DOUBLE_TAP_MS) {
-          s.shootPressed = true;
-          lastUp[hit.idx] = 0;
-        } else {
-          s.jumpPressed = true;
-          lastUp[hit.idx] = now;
-        }
+      case 'up':
+        if (isDoubleTap(e.code)) s.shootPressed = true;
+        else s.jumpPressed = true;
         break;
-      }
     }
   });
 
   window.addEventListener('keyup', (e) => {
-    const hit = lookup.get(e.code);
-    if (!hit) return;
+    if (!lookup.has(e.code)) return;
     held.delete(e.code);
-    const s = states[hit.idx];
-    if (hit.action === 'left') s.left = false;
-    else if (hit.action === 'right') s.right = false;
-    else if (hit.action === 'down') s.down = false;
+    refreshHeld();
   });
 
   window.addEventListener('blur', () => {
     held.clear();
-    for (const s of states) {
-      s.left = s.right = s.down = false;
-    }
+    refreshHeld();
   });
+
+  return {
+    setSinglePlayer(v) {
+      singlePlayer = v;
+      held.clear();
+      refreshHeld();
+    },
+  };
 }

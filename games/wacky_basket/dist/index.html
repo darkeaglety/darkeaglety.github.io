@@ -451,6 +451,204 @@
         margin: 0 0 1rem;
       }
 
+      .card .solo-only,
+      .players-solo .versus-only,
+      #menu.has-save .diff-seg {
+        display: none !important;
+      }
+
+      #btn-go-continue,
+      #gameover.franchise-result #btn-rematch,
+      #gameover.franchise-result #btn-go-menu {
+        display: none;
+      }
+
+      .players-solo .seg.solo-only {
+        display: flex !important;
+      }
+
+      .players-solo .help-wide.solo-only {
+        display: block !important;
+      }
+
+      #gameover.franchise-result #btn-go-continue {
+        display: inline-block;
+      }
+
+      #franchise-status {
+        display: none;
+        margin: -0.3rem 0 0.8rem;
+        padding: 0.5rem 0.7rem;
+        border-radius: 12px;
+        background: rgba(255, 230, 109, 0.1);
+        color: var(--gold);
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+
+      #go-note {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin: -0.4rem 0 1rem;
+        min-height: 0;
+      }
+
+      #go-note:empty {
+        display: none;
+      }
+
+      #go-note.gold {
+        color: var(--gold);
+        text-shadow: 0 0 16px rgba(255, 230, 109, 0.6);
+      }
+
+      .card.wide {
+        width: min(54rem, 96vw);
+      }
+
+      .fr-title {
+        font-size: clamp(1.4rem, 4vw, 2rem);
+        font-weight: 900;
+        color: var(--gold);
+        text-shadow: 0 3px 0 #1a1a2e;
+      }
+
+      .fr-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.15fr;
+        gap: 1rem;
+        text-align: left;
+        margin-bottom: 0.8rem;
+      }
+
+      .fr-panel {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 14px;
+        padding: 0.8rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .fr-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        opacity: 0.7;
+        margin-bottom: 0.3rem;
+      }
+
+      .fr-opp {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+      }
+
+      .fr-opp-name {
+        font-size: 1.3rem;
+        font-weight: 900;
+      }
+
+      .fr-stars {
+        color: var(--gold);
+        letter-spacing: 0.1em;
+      }
+
+      .fr-banner {
+        font-size: 1.6rem;
+        font-weight: 900;
+      }
+
+      .fr-banner.gold {
+        color: var(--gold);
+        animation: wobble 1.2s ease-in-out infinite;
+        display: inline-block;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 0.7em;
+        height: 0.7em;
+        border-radius: 50%;
+        margin-right: 0.4em;
+        vertical-align: -0.05em;
+      }
+
+      .dot.big {
+        width: 2.2rem;
+        height: 2.2rem;
+        margin: 0;
+        box-shadow: 0 0 14px currentColor;
+      }
+
+      #fr-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+      }
+
+      #fr-table th {
+        text-align: left;
+        opacity: 0.6;
+        font-weight: 700;
+        padding: 0.15rem 0.3rem;
+      }
+
+      #fr-table td {
+        padding: 0.18rem 0.3rem;
+        white-space: nowrap;
+      }
+
+      #fr-table tr.you td {
+        background: rgba(255, 107, 107, 0.2);
+        font-weight: 900;
+      }
+
+      #fr-table tr.cut td {
+        border-bottom: 2px dashed rgba(255, 230, 109, 0.5);
+      }
+
+      .fr-round {
+        margin-bottom: 0.5rem;
+      }
+
+      .fr-match {
+        font-size: 0.8rem;
+        padding: 0.12rem 0;
+        opacity: 0.8;
+      }
+
+      .fr-match.mine {
+        opacity: 1;
+        color: var(--gold);
+      }
+
+      .fr-match span {
+        opacity: 0.6;
+      }
+
+      .big-btn.danger {
+        background: linear-gradient(180deg, #8f3a4a, #5e2030);
+        box-shadow: 0 5px 0 #3a121c;
+      }
+
+      @media (max-width: 640px), (max-height: 500px) {
+        .fr-grid {
+          grid-template-columns: 1fr 1fr;
+          gap: 0.6rem;
+        }
+        .card.wide {
+          padding: 0.8rem;
+        }
+      }
+
+      #touch-root.solo .t-p2 {
+        display: none;
+      }
+
+      #touch-root.solo .t-p1 {
+        right: max(12px, env(safe-area-inset-right));
+        justify-content: space-between;
+      }
+
       #rotate {
         position: absolute;
         inset: 0;
@@ -487,7 +685,7 @@
         }
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DWck4aQr.js"></script>
+    <script type="module" crossorigin src="./assets/index-C1IsF7Xx.js"></script>
   </head>
   <body>
     <div id="game-root">
@@ -502,34 +700,50 @@
         <div class="card">
           <h1 class="title" id="title"></h1>
           <p class="subtitle">1v1 stickman hoops on one device. First to 11 wins!</p>
+          <div class="label">Mode</div>
+          <div class="seg">
+            <button type="button" data-players="versus">2 Players</button>
+            <button type="button" data-players="quick">Vs CPU</button>
+            <button type="button" data-players="franchise">Franchise</button>
+          </div>
+          <div class="seg solo-only diff-seg">
+            <button type="button" data-diff="easy">Easy</button>
+            <button type="button" data-diff="medium">Medium</button>
+            <button type="button" data-diff="hard">Hard</button>
+          </div>
+          <div id="franchise-status"></div>
           <div class="label">Controls</div>
           <div class="seg">
             <button type="button" data-mode="keyboard">Keyboard</button>
             <button type="button" data-mode="touch">Touch</button>
           </div>
           <label class="opt"><input type="checkbox" id="opt-wacky" /> Wacky moments (random match twist)</label>
-          <label class="opt touch-only"><input type="checkbox" id="opt-table" /> Face-to-face table mode</label>
+          <label class="opt touch-only versus-only"><input type="checkbox" id="opt-table" /> Face-to-face table mode</label>
           <div class="help keys-only">
             <div>
               <b style="color: var(--coral)">Coral (P1)</b><br />
               <kbd>A</kbd> <kbd>D</kbd> move<br />
               <kbd>W</kbd> jump<br />
               <kbd>W</kbd><kbd>W</kbd> double-tap shoot<br />
-              <kbd>S</kbd> steal / crossover
+              <kbd>A</kbd><kbd>A</kbd> / <kbd>D</kbd><kbd>D</kbd> steal toward ball<br />
+              <kbd>S</kbd> crossover
             </div>
             <div class="p2">
               <b style="color: var(--teal)">Teal (P2)</b><br />
               <kbd>&larr;</kbd> <kbd>&rarr;</kbd> move<br />
               <kbd>&uarr;</kbd> jump<br />
               <kbd>&uarr;</kbd><kbd>&uarr;</kbd> double-tap shoot<br />
-              <kbd>&darr;</kbd> steal / crossover
+              <kbd>&larr;</kbd><kbd>&larr;</kbd> / <kbd>&rarr;</kbd><kbd>&rarr;</kbd> steal toward ball<br />
+              <kbd>&darr;</kbd> crossover
             </div>
-            <div class="help-wide">Shots release at the top of your jump. Jump near the rim to DUNK. Hit 3 in a row to go ON FIRE. <kbd>Esc</kbd> pauses.</div>
+            <div class="help-wide solo-only">Playing solo? You're Coral and can use <kbd>WASD</kbd> or the arrow keys.</div>
+            <div class="help-wide">Shots release at the top of your jump. Jump near the rim to DUNK. Steals only work when the ball is right next to you. Hit 3 in a row to go ON FIRE. <kbd>Esc</kbd> pauses.</div>
           </div>
           <div class="help touch-only">
             <div><b style="color: var(--coral)">Coral</b> plays on the left half of the screen.</div>
             <div class="p2"><b style="color: var(--teal)">Teal</b> plays on the right half.</div>
-            <div class="help-wide">Slide on the arrow pad to run. JUMP to jump or block, SHOOT for a jump shot, STEAL to poke the ball (or crossover when you have it).</div>
+            <div class="help-wide solo-only">Playing solo? Your controls stretch across the bottom of the screen.</div>
+            <div class="help-wide">Slide on the arrow pad to run. JUMP to jump or block, SHOOT for a jump shot, STEAL to poke the ball when it's right next to you (or crossover when you have it).</div>
           </div>
           <button type="button" class="big-btn" id="btn-play">PLAY!</button>
         </div>
@@ -548,8 +762,31 @@
         <div class="card">
           <div id="go-title"></div>
           <div id="go-score"></div>
+          <div id="go-note"></div>
           <button type="button" class="big-btn" id="btn-rematch">REMATCH</button>
           <button type="button" class="big-btn alt" id="btn-go-menu">Menu</button>
+          <button type="button" class="big-btn" id="btn-go-continue">CONTINUE</button>
+        </div>
+      </div>
+
+      <div id="franchise" class="overlay">
+        <div class="card wide">
+          <div id="fr-title" class="fr-title"></div>
+          <div id="fr-sub" class="subtitle"></div>
+          <div class="fr-grid">
+            <div>
+              <div class="label">Next up</div>
+              <div id="fr-next" class="fr-panel"></div>
+              <div id="fr-bracket"></div>
+            </div>
+            <div>
+              <div class="label">Standings (top 8 make the playoffs)</div>
+              <table id="fr-table"></table>
+            </div>
+          </div>
+          <button type="button" class="big-btn" id="btn-fr-play">PLAY</button><br />
+          <button type="button" class="big-btn alt" id="btn-fr-menu">Menu</button>
+          <button type="button" class="big-btn alt danger" id="btn-fr-reset">Reset</button>
         </div>
       </div>
 

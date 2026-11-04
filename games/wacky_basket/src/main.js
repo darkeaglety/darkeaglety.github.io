@@ -26,13 +26,27 @@ import { buildCourtCache, createNet, stepNet, drawNet, drawRim } from './court.j
 import { createFx } from './fx.js';
 import { createAudio } from './audio.js';
 import { createUI } from './ui.js';
+import { createAI, DIFFICULTY_LEVELS } from './ai.js';
+import {
+  loadFranchise,
+  saveFranchise,
+  newFranchise,
+  nextSeason,
+  clearFranchise,
+  nextOpponent,
+  cpuLevel,
+  recordGame,
+  teamStyle,
+  roundName,
+  REGULAR_GAMES,
+} from './franchise.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d', { alpha: false });
 const audio = createAudio();
 const fx = createFx();
 const inputs = [createInputState(), createInputState()];
-const demoInputs = [createInputState(), createInputState()];
+const aiInputs = [createInputState(), createInputState()];
 const touch = attachTouch(document.getElementById('touch-root'), inputs);
 
 const titleEl = document.getElementById('title');
@@ -67,7 +81,11 @@ const game = {
   winner: -1,
   time: 0,
   stepCount: 0,
-  demoRange: [400, 400],
+  mode: 'versus',
+  teams: [TEAMS[0], TEAMS[1]],
+  ais: [null, null],
+  franchise: null,
+  matchLabel: '',
 };
 
 const view = { dpr: 1, cw: 0, ch: 0, scale: 1, ox: 0, oy: 0, court: null, ballSprite: null, ballSpriteR: 0 };
@@ -81,9 +99,43 @@ const ui = createUI({
     audio.unlock();
     audio.click();
     game.settings = settings;
+    if (settings.players === 'franchise') {
+      game.franchise = loadFranchise() || newFranchise(settings.difficulty);
+      openFranchiseHub();
+      return;
+    }
     ui.hideMenu();
     startMatch();
   },
+  onFranchisePlay() {
+    audio.unlock();
+    audio.click();
+    ui.hideFranchise();
+    ui.hideMenu();
+    startMatch();
+  },
+  onNextSeason() {
+    audio.click();
+    game.franchise = nextSeason(game.franchise);
+    openFranchiseHub();
+  },
+  onFranchiseReset() {
+    audio.click();
+    clearFranchise();
+    game.franchise = null;
+    ui.hideFranchise();
+    goToMenu();
+  },
+  onFranchiseMenu() {
+    audio.click();
+    ui.hideFranchise();
+    goToMenu();
+  },
+  onContinue() {
+    audio.click();
+    openFranchiseHub();
+  },
+  getFranchise: loadFranchise,
   onResume() {
     audio.click();
     setPaused(false);
@@ -114,7 +166,7 @@ const ui = createUI({
 });
 ui.setMuted(audio.muted);
 
-attachKeyboard(inputs, {
+const keyboard = attachKeyboard(inputs, {
   onPause() {
     if (!game.demo && game.state !== 'over') setPaused(!game.paused);
   },
@@ -155,6 +207,12 @@ function setupWorld(moment) {
   game.scores = [0, 0];
   game.scorePulse = [0, 0];
   game.winner = -1;
+  game.ais.forEach((ai, i) => {
+    if (!ai) return;
+    ai.reset();
+    game.players[i].speedMul = ai.cfg.speedMul;
+    game.players[i].aimMul = ai.cfg.aimMul;
+  });
   fx.clear();
   rebuildCourt();
 }
@@ -162,10 +220,27 @@ function setupWorld(moment) {
 function startMatch() {
   game.demo = false;
   const s = game.settings;
+  game.mode = s.players;
+  if (game.mode === 'franchise') {
+    const f = game.franchise;
+    game.teams = [teamStyle(f.teams[0]), teamStyle(nextOpponent(f))];
+    game.ais = [null, createAI(cpuLevel(f))];
+    game.matchLabel = f.phase === 'playoffs' ? roundName(f).toUpperCase() : `GAME ${f.gameIndex + 1} OF ${REGULAR_GAMES}`;
+  } else if (game.mode === 'quick') {
+    game.teams = [{ ...TEAMS[0], name: 'You' }, { ...TEAMS[1], name: `${s.difficulty.charAt(0).toUpperCase()}${s.difficulty.slice(1)} CPU` }];
+    game.ais = [null, createAI(DIFFICULTY_LEVELS[s.difficulty])];
+  } else {
+    game.teams = [TEAMS[0], TEAMS[1]];
+    game.ais = [null, null];
+  }
+  const solo = game.mode !== 'versus';
+  keyboard.setSinglePlayer(solo);
+  touch.setSinglePlayer(solo);
+
   const moment = s.wacky ? WACKY_MOMENTS[(Math.random() * WACKY_MOMENTS.length) | 0] : NORMAL_MOMENT;
   setupWorld(moment);
   touch.setVisible(s.mode === 'touch');
-  touch.setTableMode(s.mode === 'touch' && s.table);
+  touch.setTableMode(s.mode === 'touch' && s.table && !solo);
   resize();
   startTipoff();
 }
@@ -173,11 +248,40 @@ function startMatch() {
 function goToMenu() {
   ui.hideGameOver();
   touch.setVisible(false);
+  keyboard.setSinglePlayer(false);
   ui.showMenu();
+  startDemo();
+}
+
+function startDemo() {
   game.demo = true;
+  game.mode = 'demo';
+  game.teams = [TEAMS[0], TEAMS[1]];
+  game.ais = [createAI(0.5), createAI(0.5)];
   setupWorld(NORMAL_MOMENT);
   setupPossession(0);
   if (view.cw) resize();
+}
+
+function openFranchiseHub() {
+  ui.hideGameOver();
+  touch.setVisible(false);
+  ui.hideMenu();
+  if (!game.demo) startDemo();
+  ui.showFranchise(game.franchise);
+}
+
+function finishFranchiseGame() {
+  const f = game.franchise;
+  const won = game.winner === 0;
+  const event = recordGame(f, won, game.scores[0], game.scores[1]);
+  saveFranchise(f);
+  if (event === 'champion') {
+    fx.confetti(WORLD_W * 0.25, 780, 120, 1.3);
+    fx.confetti(WORLD_W * 0.75, 780, 120, 1.3);
+    audio.cheer(1.8);
+  }
+  return event;
 }
 
 function startTipoff() {
@@ -227,8 +331,7 @@ function setupPossession(idx) {
   game.stateTimer = 0;
   game.controlsLive = false;
   game.allowPickup = true;
-  game.demoRange[idx] = 150 + Math.random() * 620;
-  if (!game.demo) fx.popup(`${TEAMS[idx].name.toUpperCase()} BALL`, off.x, 360, TEAMS[idx].color, 36, 0.9);
+  if (!game.demo) fx.popup(`${game.teams[idx].name.toUpperCase()} BALL`, off.x, 360, game.teams[idx].color, 36, 0.9);
 }
 
 // ---------------------------------------------------------------- view
@@ -249,7 +352,7 @@ function resize() {
 
 function rebuildCourt() {
   if (!game.hoops.length) return;
-  view.court = buildCourtCache(view.scale, game.hoops);
+  view.court = buildCourtCache(view.scale, game.hoops, game.teams);
   view.ballSprite = makeBallSprite(game.ball.r, view.scale);
   view.ballSpriteR = game.ball.r;
 }
@@ -318,6 +421,7 @@ game.releaseShot = (p) => {
   const oppBetween = (opp.x - p.x) * hoop.side > -30;
   if (oppDx < 150 && oppBetween) sigma *= !opp.grounded ? 2.1 : oppDx < 110 ? 1.45 : 1.15;
   if (p.onFire) sigma *= 0.4;
+  sigma *= p.aimMul;
 
   const sx = ball.x;
   const sy = ball.y;
@@ -480,7 +584,7 @@ function onScore(ball, hoop) {
     fx.slowmo(0.25, 1.2);
     fx.punch(hoop.center, hoop.rimY + 60, 0.35);
     fx.confetti(WORLD_W / 2, FLOOR_Y, 120, 1.4);
-    fx.popup('GAME!', WORLD_W / 2, 330, TEAMS[hoop.attacker].color, 110, 2.4);
+    fx.popup('GAME!', WORLD_W / 2, 330, game.teams[hoop.attacker].color, 110, 2.4);
     audio.buzzer();
     audio.cheer(1.6);
   } else {
@@ -588,27 +692,6 @@ function separatePlayers() {
   }
 }
 
-function demoAI(i, inp) {
-  const p = game.players[i];
-  const o = game.players[1 - i];
-  const ball = game.ball;
-  let target = p.x;
-  if (ball.holder === p) {
-    target = p.hoop.center - p.hoop.side * game.demoRange[i];
-    if (Math.abs(p.x - target) < 40 && p.grounded && Math.random() < 0.06) inp.shootPressed = true;
-    if (Math.abs(o.x - p.x) < 120 && Math.random() < 0.004) inp.downPressed = true;
-  } else if (ball.holder === o) {
-    target = o.x + o.hoop.side * 110;
-    if (Math.abs(p.x - o.x) < 120 && Math.random() < 0.008) inp.downPressed = true;
-  } else {
-    target = ball.x;
-    if (ball.y < p.y - 200 && Math.abs(ball.x - p.x) < 90 && p.grounded && ball.vy > 0) inp.jumpPressed = true;
-    if (ball.lastShooter === o.idx && ball.shotTimer < 0.12 && Math.abs(p.x - o.x) < 160 && p.grounded) inp.jumpPressed = true;
-  }
-  inp.right = target > p.x + 18;
-  inp.left = target < p.x - 18;
-}
-
 // ---------------------------------------------------------------- simulation
 
 function step(dt) {
@@ -650,12 +733,13 @@ function step(dt) {
   if (game.demo && game.state === 'play') game.controlsLive = true;
 
   for (const p of game.players) {
-    const inp = game.demo ? demoInputs[p.idx] : inputs[p.idx];
-    if (game.demo) demoAI(p.idx, inp);
+    const ai = game.ais[p.idx];
+    const inp = ai ? aiInputs[p.idx] : inputs[p.idx];
+    if (ai) ai.update(game, p, game.players[1 - p.idx], inp, dt);
     stepPlayer(p, inp, game, dt);
   }
   for (const s of inputs) clearEdges(s);
-  for (const s of demoInputs) clearEdges(s);
+  for (const s of aiInputs) clearEdges(s);
   separatePlayers();
 
   if (ball.holder) {
@@ -721,7 +805,12 @@ function updateStates(realDt) {
     if (game.stateTimer > 2.8) {
       game.state = 'over';
       touch.setVisible(false);
-      ui.showGameOver(TEAMS[game.winner], game.scores);
+      if (game.mode === 'franchise') {
+        const event = finishFranchiseGame();
+        ui.showGameOver(game.teams[game.winner], game.scores, { franchise: game.franchise, event });
+      } else {
+        ui.showGameOver(game.teams[game.winner], game.scores, { solo: game.mode === 'quick', youWon: game.winner === 0 });
+      }
     }
   }
   if (game.demo && game.state === 'play' && !game.ball.holder && game.ball.shotTimer > 6 && game.ball.y > FLOOR_Y - 40) {
@@ -766,7 +855,7 @@ function render(alpha, realDt) {
   ctx.translate(0, FLOOR_Y * 2);
   ctx.scale(1, -1);
   ctx.globalAlpha = 0.16;
-  for (const p of game.players) drawStickman(ctx, p, TEAMS[p.idx], t, true);
+  for (const p of game.players) drawStickman(ctx, p, game.teams[p.idx], t, true);
   drawBall(ballPos.x, ballPos.y, false);
   ctx.restore();
 
@@ -791,8 +880,8 @@ function render(alpha, realDt) {
   }
 
   const holder = ball.holder;
-  for (const p of game.players) if (p !== holder) drawStickman(ctx, p, TEAMS[p.idx], t, false);
-  if (holder) drawStickman(ctx, holder, TEAMS[holder.idx], t, false);
+  for (const p of game.players) if (p !== holder) drawStickman(ctx, p, game.teams[p.idx], t, false);
+  if (holder) drawStickman(ctx, holder, game.teams[holder.idx], t, false);
 
   drawBallTrail(ball);
   drawBall(ballPos.x, ballPos.y, true);
@@ -869,14 +958,15 @@ function drawIndicators(t) {
     const a = p.anim;
     const x = a.head.x;
     const y = a.head.y - a.headR - 26 + Math.sin(t * 5 + p.idx) * 3;
-    ctx.fillStyle = TEAMS[p.idx].color;
+    ctx.fillStyle = game.teams[p.idx].color;
     ctx.beginPath();
     ctx.moveTo(x - 9, y + 6);
     ctx.lineTo(x + 9, y + 6);
     ctx.lineTo(x, y + 16);
     ctx.closePath();
     ctx.fill();
-    ctx.fillText(`P${p.idx + 1}`, x, y - 6);
+    const label = game.ais[p.idx] ? 'CPU' : game.mode === 'versus' ? `P${p.idx + 1}` : 'YOU';
+    ctx.fillText(label, x, y - 6);
   }
 }
 
@@ -896,13 +986,13 @@ function drawScoreboard(t) {
   ctx.textBaseline = 'middle';
   ctx.font = '800 15px "Trebuchet MS", sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillText(`FIRST TO ${WIN_SCORE}`, cx, top + 64);
+  ctx.fillText(game.mode === 'franchise' ? game.matchLabel : `FIRST TO ${WIN_SCORE}`, cx, top + 64);
   ctx.fillStyle = '#ffe66d';
   ctx.font = '900 26px "Trebuchet MS", sans-serif';
   ctx.fillText('VS', cx, top + 36);
 
   for (let i = 0; i < 2; i++) {
-    const team = TEAMS[i];
+    const team = game.teams[i];
     const x = cx + (i === 0 ? -130 : 130);
     const pulse = game.scorePulse[i];
     ctx.font = '800 14px "Trebuchet MS", sans-serif';
@@ -987,4 +1077,4 @@ goToMenu();
 resize();
 requestAnimationFrame(frame);
 
-if (import.meta.env.DEV) window.__wb = { game, step, inputs, fx };
+if (import.meta.env.DEV) window.__wb = { game, step, updateStates, inputs, fx, createAI, recordGame, openFranchiseHub };

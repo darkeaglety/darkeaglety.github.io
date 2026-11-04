@@ -26,14 +26,18 @@ export function attachTouch(root, states) {
   return {
     setVisible(v) {
       root.classList.toggle('show', v);
-      if (!v) for (const s of states) s.left = s.right = s.down = false;
+      if (!v) for (const s of states) s.left = s.right = false;
+    },
+    setSinglePlayer(v) {
+      root.classList.toggle('solo', v);
     },
     bottomReserve() {
       if (!root.classList.contains('show')) return 0;
       const table = root.classList.contains('table');
       let top = window.innerHeight;
+      const solo = root.classList.contains('solo');
       groups.forEach((g, i) => {
-        if (table && i === 1) return;
+        if ((table || solo) && i === 1) return;
         top = Math.min(top, g.getBoundingClientRect().top);
       });
       return window.innerHeight - top;
@@ -101,16 +105,14 @@ function bindButton(btn, state) {
     if (act === 'jump') state.jumpPressed = true;
     else if (act === 'shoot') state.shootPressed = true;
     else {
-      state.down = true;
+      // One button does both: crossover with the ball, steal toward the ball without it.
       state.downPressed = true;
+      state.stealToBall = true;
     }
   });
   const end = (e) => {
     if (!pointers.delete(e.pointerId)) return;
-    if (pointers.size === 0) {
-      btn.classList.remove('on');
-      if (act === 'steal') state.down = false;
-    }
+    if (pointers.size === 0) btn.classList.remove('on');
   };
   btn.addEventListener('pointerup', end);
   btn.addEventListener('pointercancel', end);

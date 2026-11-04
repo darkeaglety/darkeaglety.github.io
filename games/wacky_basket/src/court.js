@@ -1,4 +1,4 @@
-import { WORLD_W, WORLD_H, FLOOR_Y, THREE_PT_DIST, TEAMS } from './constants.js';
+import { WORLD_W, WORLD_H, FLOOR_Y, THREE_PT_DIST } from './constants.js';
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -11,7 +11,7 @@ function mulberry32(seed) {
   };
 }
 
-export function buildCourtCache(scale, hoops) {
+export function buildCourtCache(scale, hoops, teams) {
   const c = document.createElement('canvas');
   c.width = Math.ceil(WORLD_W * scale);
   c.height = Math.ceil(WORLD_H * scale);
@@ -151,7 +151,7 @@ export function buildCourtCache(scale, hoops) {
 
   // Court paint
   for (const hoop of hoops) {
-    const team = TEAMS[hoop.attacker === 0 ? 1 : 0];
+    const team = teams[1 - hoop.attacker];
     const baseX = hoop.side > 0 ? WORLD_W : 0;
     const keyX = hoop.center - hoop.side * 260;
     g.fillStyle = team.color;
@@ -198,7 +198,7 @@ export function buildCourtCache(scale, hoops) {
     g.fillRect(poleX - 9, 250, 18, FLOOR_Y - 250);
     g.fillStyle = '#3d4258';
     g.fillRect(poleX - 9, 250, 6, FLOOR_Y - 250);
-    g.fillStyle = TEAMS[hoop.attacker === 0 ? 1 : 0].dark;
+    g.fillStyle = teams[1 - hoop.attacker].dark;
     g.fillRect(poleX - 14, FLOOR_Y - 170, 28, 170);
     g.fillStyle = '#1b1e2b';
     g.fillRect(Math.min(poleX, hoop.boardX), 330, Math.abs(poleX - hoop.boardX), 12);
@@ -214,7 +214,7 @@ export function buildCourtCache(scale, hoops) {
     g.fillRect(bx, hoop.boardTop, 14, 4);
     g.fillStyle = '#ff6b35';
     g.fillRect(bx, hoop.rimY - 56, 14, 56);
-    g.fillStyle = TEAMS[hoop.attacker === 0 ? 1 : 0].color;
+    g.fillStyle = teams[1 - hoop.attacker].color;
     g.fillRect(bx - 2, hoop.boardBottom - 8, 18, 14);
     // Rim bracket
     g.fillStyle = '#c8461d';

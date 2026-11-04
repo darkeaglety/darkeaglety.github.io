@@ -11,6 +11,7 @@ import {
   JUMP_VELOCITY,
   STEAL_COOLDOWN,
   STEAL_LUNGE_TIME,
+  STEAL_RANGE,
   CROSSOVER_TIME,
   CROSSOVER_COOLDOWN,
 } from './constants.js';
@@ -48,6 +49,8 @@ export function createPlayer(idx, hoop) {
     mood: 'play',
     streak: 0,
     onFire: false,
+    speedMul: 1,
+    aimMul: 1,
     anim: createAnim(),
   };
 }
@@ -97,7 +100,7 @@ export function stepPlayer(p, input, game, dt) {
   }
 
   const dir = locked ? 0 : (input.right ? 1 : 0) - (input.left ? 1 : 0);
-  let max = (hasBall ? PLAYER_SPEED_BALL : PLAYER_SPEED) * params.speedMul;
+  let max = (hasBall ? PLAYER_SPEED_BALL : PLAYER_SPEED) * params.speedMul * p.speedMul;
   if (p.stumble > 0) max *= 0.3;
 
   if (p.crossTimer > 0) {
@@ -121,20 +124,29 @@ export function stepPlayer(p, input, game, dt) {
       if (hasBall) p.shotQueued = true;
       else p.blockRaise = 0.55;
     }
-    if (input.downPressed && p.grounded) {
-      if (hasBall) {
-        if (p.crossCd <= 0) {
-          p.crossTimer = CROSSOVER_TIME;
-          p.crossCd = CROSSOVER_COOLDOWN;
-          p.crossDir = dir !== 0 ? dir : p.facing;
-          events.crossover(p);
-        }
-      } else if (p.stealCd <= 0) {
-        p.stealTimer = STEAL_LUNGE_TIME;
-        p.stealCd = STEAL_COOLDOWN;
-        p.stealResolved = false;
-        events.swipe(p);
-      }
+    if (input.downPressed && p.grounded && hasBall && p.crossCd <= 0) {
+      p.crossTimer = CROSSOVER_TIME;
+      p.crossCd = CROSSOVER_COOLDOWN;
+      p.crossDir = dir !== 0 ? dir : p.facing;
+      events.crossover(p);
+    }
+    const toBall = ball.x >= p.x ? 1 : -1;
+    const stealDir = input.stealToBall ? toBall : input.stealDir;
+    const holder = ball.holder;
+    if (
+      stealDir !== 0 &&
+      holder &&
+      holder !== p &&
+      p.grounded &&
+      p.stealCd <= 0 &&
+      stealDir === toBall &&
+      Math.abs(ball.x - p.x) < STEAL_RANGE
+    ) {
+      p.facing = stealDir;
+      p.stealTimer = STEAL_LUNGE_TIME;
+      p.stealCd = STEAL_COOLDOWN;
+      p.stealResolved = false;
+      events.swipe(p);
     }
   }
 
