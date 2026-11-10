@@ -52,6 +52,7 @@ export function createBall() {
     shotFire: false,
     touchedRim: false,
     scored: false,
+    missReacted: false,
     stuckTimer: 0,
     trail: new Float32Array(16),
     trailHead: 0,

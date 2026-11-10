@@ -136,11 +136,26 @@ export function createAudio() {
       tone('triangle', 900, 700, 0.4, 0.12, 0.02);
     },
     cheer(size = 1) {
-      hiss('bandpass', 1100, 0.6, 1.3 * size, 0.28 * size, 0.25);
-      hiss('bandpass', 2400, 1.2, 1.0 * size, 0.12 * size, 0.3);
+      if (!throttle('cheer', 180)) return;
+      const s = Math.max(0.4, size);
+      // Layered crowd roar: low roar + mid cheer + high whoops.
+      hiss('bandpass', 700, 0.5, 1.5 * s, 0.32 * s, 0.18);
+      hiss('bandpass', 1400, 0.7, 1.35 * s, 0.26 * s, 0.22, 0.04);
+      hiss('bandpass', 2800, 1.1, 1.05 * s, 0.14 * s, 0.28, 0.08);
+      tone('triangle', 520, 780, 0.35, 0.05 * s, 0.05);
+      tone('triangle', 660, 990, 0.28, 0.04 * s, 0.12);
+      tone('sine', 880, 1320, 0.22, 0.03 * s, 0.2);
+    },
+    awww() {
+      if (!throttle('awww', 400)) return;
+      // Falling crowd "awwwww" — soft mid noise with descending tones.
+      hiss('bandpass', 900, 0.7, 1.15, 0.22, 0.2, 0, 450);
+      hiss('bandpass', 1600, 1.0, 0.95, 0.12, 0.25, 0.05, 700);
+      tone('sine', 420, 220, 0.9, 0.07, 0.05);
+      tone('triangle', 330, 180, 1.0, 0.05, 0.1);
     },
     groan() {
-      hiss('bandpass', 400, 0.8, 0.8, 0.18, 0.15, 0, 250);
+      this.awww();
     },
     beep(high) {
       tone('square', high ? 1046 : 660, high ? 1046 : 660, high ? 0.45 : 0.15, 0.12);

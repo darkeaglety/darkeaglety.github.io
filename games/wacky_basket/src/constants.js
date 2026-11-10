@@ -26,8 +26,8 @@ export const THREE_PT_DIST = 560;
 
 export const PLAYER_MIN_X = 40;
 export const PLAYER_MAX_X = WORLD_W - 40;
-export const PLAYER_SPEED = 560;
-export const PLAYER_SPEED_BALL = 500;
+export const PLAYER_SPEED = 480;
+export const PLAYER_SPEED_BALL = 430;
 export const PLAYER_ACCEL = 4200;
 export const PLAYER_AIR_ACCEL = 1900;
 export const PLAYER_FRICTION = 5200;
@@ -55,7 +55,7 @@ export const WACKY_MOMENTS = [
   { id: 'lowgrav', label: 'LOW GRAVITY!', gravityMul: 0.55 },
   { id: 'bouncy', label: 'BOUNCY FLOOR!', floorBounce: 0.93, jumpMul: 1.12 },
   { id: 'bighead', label: 'BIG HEAD MODE!', headScale: 2.1 },
-  { id: 'turbo', label: 'TURBO SNEAKERS!', speedMul: 1.45 },
+  { id: 'slomo', label: 'SLO-MO!', timeScale: 0.58 },
   { id: 'megahoop', label: 'MEGA HOOPS!', rimScale: 1.45 },
 ];
 

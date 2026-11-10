@@ -194,6 +194,7 @@ function makeParams(moment) {
     speedMul: moment.speedMul ?? 1,
     jumpMul: moment.jumpMul ?? 1,
     rimScale: moment.rimScale ?? 1,
+    timeScale: moment.timeScale ?? 1,
   };
 }
 
@@ -443,6 +444,7 @@ game.releaseShot = (p) => {
   ball.shotFire = p.onFire;
   ball.shotDist = dist;
   ball.blockChecked = false;
+  ball.missReacted = false;
   p.shotQueued = false;
   p.shootAnim = 0.5;
   p.noPickup = 0.35;
@@ -487,6 +489,17 @@ game.events = {
   bounce(ball, impact) {
     audio.bounce(impact / 1400);
     if (impact > 700) fx.dust(ball.x, FLOOR_Y, 3, 0.5);
+    // First floor bounce after a shot attempt that didn't go in → crowd awww.
+    if (
+      !ball.scored &&
+      !ball.missReacted &&
+      ball.lastShooter !== -1 &&
+      ball.shotTimer > 0.35 &&
+      ball.shotTimer < 4
+    ) {
+      ball.missReacted = true;
+      if (!game.demo) audio.awww();
+    }
   },
   wall(ball, v) {
     if (v > 150) audio.board(v / 1500);
@@ -519,6 +532,7 @@ game.events = {
       def.stumble = 0.7;
       fx.popup('ANKLES!', def.x, FLOOR_Y - 270, '#a78bfa', 44, 0.9);
       fx.shake(0.12);
+      audio.cheer(0.75);
     }
   },
   swipe() {
@@ -533,12 +547,13 @@ function onScore(ball, hoop) {
   const value = ball.lastShooter === hoop.attacker ? ball.shotValue : 2;
   const swish = !ball.touchedRim;
   const big = ball.dunk || value === 3;
+  ball.missReacted = true;
 
   fx.confetti(hoop.center, hoop.rimY + 40, big ? 70 : 40, 0.8);
   fx.crowdFlashes(big ? 40 : 22);
   fx.shake(ball.dunk ? 0.35 : 0.2);
   fx.flash = big ? 0.25 : 0.12;
-  audio.cheer(big ? 1.2 : 0.9);
+  audio.cheer(big ? 1.35 : 1.05);
   if (swish) audio.swish();
 
   const px = hoop.center - hoop.side * 120;
@@ -651,6 +666,10 @@ function resolveBlocks() {
     fx.burst(ball.x, ball.y, 18, 'white', 500, 0.35, 18);
     fx.shake(0.35);
     audio.block();
+    if (!ball.missReacted && !game.demo) {
+      ball.missReacted = true;
+      audio.awww();
+    }
     return;
   }
 }
@@ -1059,7 +1078,7 @@ function frame(now) {
 
   if (!game.paused) {
     fx.updateCamera(realDt);
-    acc += realDt * fx.timeScale;
+    acc += realDt * (fx.slowTimer > 0 ? fx.timeScale : game.params.timeScale);
     let n = 0;
     while (acc >= SIM_DT && n < 12) {
       step(SIM_DT);
