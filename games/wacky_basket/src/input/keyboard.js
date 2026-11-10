@@ -57,14 +57,9 @@ export function attachKeyboard(states, { onPause, onToggleFps }) {
 
     const s = states[target(hit)];
     switch (hit.action) {
-      case 'left':
-        if (isDoubleTap(e.code)) s.stealDir = -1;
-        break;
-      case 'right':
-        if (isDoubleTap(e.code)) s.stealDir = 1;
-        break;
       case 'down':
         s.downPressed = true;
+        s.stealToBall = true;
         break;
       case 'up':
         if (isDoubleTap(e.code)) s.shootPressed = true;
